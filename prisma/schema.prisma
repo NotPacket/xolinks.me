@@ -39,9 +39,10 @@ model User {
   lastLoginAt   DateTime?
 
   // Relations
-  oauthAccounts     OAuthAccount[]
-  verificationTokens VerificationToken[]
-  links             Link[]
+  oauthAccounts       OAuthAccount[]
+  verificationTokens  VerificationToken[]
+  platformConnections PlatformConnection[]
+  links               Link[]
   profileViews      ProfileView[]
   linkClicks        LinkClick[]
   linkClicksDaily   LinkClickDaily[]
@@ -91,25 +92,56 @@ model VerificationToken {
 }
 
 // ============================================
-// LINKS
+// VERIFIED PLATFORM CONNECTIONS
+// ============================================
+
+model PlatformConnection {
+  id                String   @id @default(cuid())
+  userId            String
+  platform          String   @db.VarChar(50)  // github, instagram, twitter, youtube, tiktok, etc.
+  platformUserId    String   @db.VarChar(255) // Their ID on that platform
+  platformUsername  String   @db.VarChar(255) // Their username on that platform
+  profileUrl        String   @db.VarChar(500) // Full profile URL
+  displayName       String?  @db.VarChar(255) // Display name from platform
+  avatarUrl         String?  @db.VarChar(500) // Avatar from platform
+  accessToken       String?  @db.Text         // For API access if needed
+  refreshToken      String?  @db.Text
+  expiresAt         DateTime?
+  isVerified        Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links Link[]
+
+  @@unique([userId, platform])
+  @@unique([platform, platformUserId])
+  @@map("platform_connections")
+}
+
+// ============================================
+// LINKS (Now require verified platform connection)
 // ============================================
 
 model Link {
-  id           String   @id @default(cuid())
-  userId       String
-  title        String   @db.VarChar(255)
-  url          String   @db.VarChar(2000)
-  platform     String?  @db.VarChar(50)
-  icon         String?  @db.VarChar(100)
-  displayOrder Int      @default(0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  userId                 String
+  platformConnectionId   String?  // Links to verified platform
+  title                  String   @db.VarChar(255)
+  url                    String   @db.VarChar(2000)
+  platform               String?  @db.VarChar(50)
+  icon                   String?  @db.VarChar(100)
+  displayOrder           Int      @default(0)
+  isActive               Boolean  @default(true)
+  isVerified             Boolean  @default(false) // True if linked to platform connection
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  linkClicks        LinkClick[]
-  linkClicksDaily   LinkClickDaily[]
-  moderationFlags   ModerationFlag[]
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platformConnection PlatformConnection? @relation(fields: [platformConnectionId], references: [id], onDelete: SetNull)
+  linkClicks         LinkClick[]
+  linkClicksDaily    LinkClickDaily[]
+  moderationFlags    ModerationFlag[]
 
   @@map("links")
 }

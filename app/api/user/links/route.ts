@@ -22,6 +22,7 @@ export async function GET() {
         icon: true,
         displayOrder: true,
         isActive: true,
+        isVerified: true,
         createdAt: true,
         updatedAt: true,
       },

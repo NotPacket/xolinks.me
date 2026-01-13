@@ -28,6 +28,7 @@ async function getProfile(username: string) {
           url: true,
           platform: true,
           icon: true,
+          isVerified: true,
         },
       },
     },
@@ -106,7 +107,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                 rel="noopener noreferrer"
                 className="block w-full p-4 bg-gray-800/50 hover:bg-gray-800/70 border border-gray-700 hover:border-purple-500/50 rounded-xl text-center text-white font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/10"
               >
-                {link.title}
+                <span className="flex items-center justify-center gap-2">
+                  {link.title}
+                  {link.isVerified && (
+                    <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </span>
               </a>
             ))
           )}

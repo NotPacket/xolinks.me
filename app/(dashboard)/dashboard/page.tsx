@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface UserData {
@@ -22,23 +22,52 @@ interface LinkData {
   icon: string | null;
   displayOrder: number;
   isActive: boolean;
+  isVerified: boolean;
+}
+
+interface PlatformConnection {
+  id: string;
+  platform: string;
+  platformUsername: string;
+  profileUrl: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  isVerified: boolean;
+  platformName: string;
+  platformColor: string;
+}
+
+interface AvailablePlatform {
+  id: string;
+  name: string;
+  color: string;
+  oauthSupported: boolean;
 }
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<UserData | null>(null);
   const [links, setLinks] = useState<LinkData[]>([]);
+  const [connections, setConnections] = useState<PlatformConnection[]>([]);
+  const [availablePlatforms, setAvailablePlatforms] = useState<AvailablePlatform[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddLink, setShowAddLink] = useState(false);
-  const [newLink, setNewLink] = useState({ title: "", url: "" });
-  const [addingLink, setAddingLink] = useState(false);
-  const [editingLink, setEditingLink] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fetchLinks = useCallback(async () => {
     const res = await fetch("/api/user/links");
     if (res.ok) {
       const data = await res.json();
       setLinks(data.links);
+    }
+  }, []);
+
+  const fetchPlatforms = useCallback(async () => {
+    const res = await fetch("/api/platforms");
+    if (res.ok) {
+      const data = await res.json();
+      setConnections(data.connections);
+      setAvailablePlatforms(data.availablePlatforms);
     }
   }, []);
 
@@ -53,7 +82,7 @@ export default function DashboardPage() {
         const userData = await userRes.json();
         setUser(userData.user);
 
-        await fetchLinks();
+        await Promise.all([fetchLinks(), fetchPlatforms()]);
       } catch {
         router.push("/login");
       } finally {
@@ -62,40 +91,48 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, [router, fetchLinks]);
+  }, [router, fetchLinks, fetchPlatforms]);
+
+  // Handle URL params for success/error messages
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const error = searchParams.get("error");
+
+    if (success === "github_connected") {
+      setMessage({ type: "success", text: "GitHub connected successfully!" });
+      fetchPlatforms();
+      fetchLinks();
+    } else if (error) {
+      const errorMessages: Record<string, string> = {
+        github_denied: "GitHub connection was denied",
+        invalid_request: "Invalid request",
+        invalid_state: "Security check failed. Please try again.",
+        token_error: "Failed to get access token",
+        user_error: "Failed to get user info",
+        callback_error: "Connection failed. Please try again.",
+      };
+      setMessage({ type: "error", text: errorMessages[error] || "An error occurred" });
+    }
+
+    // Clear message after 5 seconds
+    if (success || error) {
+      const timer = setTimeout(() => setMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, fetchPlatforms, fetchLinks]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   };
 
-  const handleAddLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddingLink(true);
+  const handleDisconnect = async (platform: string) => {
+    if (!confirm(`Disconnect ${platform}? This will mark your ${platform} link as unverified.`)) return;
 
-    try {
-      const res = await fetch("/api/user/links", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newLink),
-      });
-
-      if (res.ok) {
-        await fetchLinks();
-        setNewLink({ title: "", url: "" });
-        setShowAddLink(false);
-      }
-    } finally {
-      setAddingLink(false);
-    }
-  };
-
-  const handleDeleteLink = async (id: string) => {
-    if (!confirm("Delete this link?")) return;
-
-    const res = await fetch(`/api/user/links/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/platforms/${platform}`, { method: "DELETE" });
     if (res.ok) {
-      setLinks(links.filter((l) => l.id !== id));
+      setMessage({ type: "success", text: `${platform} disconnected` });
+      await Promise.all([fetchPlatforms(), fetchLinks()]);
     }
   };
 
@@ -111,16 +148,12 @@ export default function DashboardPage() {
     }
   };
 
-  const handleUpdateLink = async (id: string, title: string, url: string) => {
-    const res = await fetch(`/api/user/links/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, url }),
-    });
+  const handleDeleteLink = async (id: string) => {
+    if (!confirm("Delete this link?")) return;
 
+    const res = await fetch(`/api/user/links/${id}`, { method: "DELETE" });
     if (res.ok) {
-      await fetchLinks();
-      setEditingLink(null);
+      setLinks(links.filter((l) => l.id !== id));
     }
   };
 
@@ -146,10 +179,7 @@ export default function DashboardPage() {
             >
               View Profile
             </Link>
-            <button
-              onClick={handleLogout}
-              className="text-sm text-gray-400 hover:text-white"
-            >
+            <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-white">
               Logout
             </button>
           </div>
@@ -157,6 +187,19 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Message Banner */}
+        {message && (
+          <div
+            className={`mb-6 p-4 rounded-xl ${
+              message.type === "success"
+                ? "bg-green-500/10 border border-green-500/50 text-green-400"
+                : "bg-red-500/10 border border-red-500/50 text-red-400"
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
+
         {/* User Info */}
         <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 mb-8">
           <div className="flex items-center gap-4">
@@ -165,59 +208,92 @@ export default function DashboardPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">{user?.displayName || user?.username}</h2>
-              <p className="text-gray-400">xolinks.me/@{user?.username}</p>
+              <p className="text-gray-400">xolinks.me/{user?.username}</p>
             </div>
           </div>
         </div>
 
-        {/* Links Section */}
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-white">Your Links</h3>
-            <button
-              onClick={() => setShowAddLink(!showAddLink)}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              {showAddLink ? "Cancel" : "+ Add Link"}
-            </button>
+        {/* Connect Platforms Section */}
+        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 mb-8">
+          <h3 className="text-lg font-semibold text-white mb-4">Connect Your Accounts</h3>
+          <p className="text-gray-400 text-sm mb-6">
+            Connect your social accounts to add verified links. Only you can add links to accounts you own.
+          </p>
+
+          {/* Available Platforms to Connect */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {availablePlatforms.map((platform) => (
+              <a
+                key={platform.id}
+                href={`/api/platforms/connect/${platform.id}`}
+                className="flex items-center gap-3 p-4 bg-gray-800/50 hover:bg-gray-800 border border-gray-700 hover:border-purple-500/50 rounded-xl transition-all duration-200"
+              >
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: platform.color }}
+                >
+                  {platform.name[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-medium text-sm truncate">{platform.name}</p>
+                  <p className="text-gray-500 text-xs">Connect</p>
+                </div>
+              </a>
+            ))}
           </div>
 
-          {/* Add Link Form */}
-          {showAddLink && (
-            <form onSubmit={handleAddLink} className="mb-6 p-4 bg-gray-800/50 rounded-xl">
-              <div className="grid gap-4 md:grid-cols-2">
-                <input
-                  type="text"
-                  placeholder="Link Title"
-                  value={newLink.title}
-                  onChange={(e) => setNewLink({ ...newLink, title: e.target.value })}
-                  className="px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-                <input
-                  type="url"
-                  placeholder="https://example.com"
-                  value={newLink.url}
-                  onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
-                  className="px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={addingLink}
-                className="mt-4 px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium rounded-lg disabled:opacity-50"
-              >
-                {addingLink ? "Adding..." : "Add Link"}
-              </button>
-            </form>
+          {availablePlatforms.length === 0 && (
+            <p className="text-gray-500 text-center py-4">All platforms connected!</p>
           )}
+        </div>
 
-          {/* Links List */}
+        {/* Connected Accounts */}
+        {connections.length > 0 && (
+          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 mb-8">
+            <h3 className="text-lg font-semibold text-white mb-4">Connected Accounts</h3>
+            <div className="space-y-3">
+              {connections.map((conn) => (
+                <div
+                  key={conn.id}
+                  className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
+                      style={{ backgroundColor: conn.platformColor }}
+                    >
+                      {conn.platformName[0]}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-white font-medium">{conn.platformName}</p>
+                        <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">
+                          Verified
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-sm">@{conn.platformUsername}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDisconnect(conn.platform)}
+                    className="text-gray-400 hover:text-red-400 text-sm"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Your Links */}
+        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold text-white mb-6">Your Links</h3>
+
           <div className="space-y-3">
             {links.length === 0 ? (
               <p className="text-gray-500 text-center py-8">
-                No links yet. Add your first link above!
+                No links yet. Connect a platform above to add your first verified link!
               </p>
             ) : (
               links.map((link) => (
@@ -227,94 +303,43 @@ export default function DashboardPage() {
                     link.isActive ? "border-gray-700" : "border-gray-800 opacity-50"
                   }`}
                 >
-                  {editingLink === link.id ? (
-                    <EditLinkForm
-                      link={link}
-                      onSave={handleUpdateLink}
-                      onCancel={() => setEditingLink(null)}
-                    />
-                  ) : (
-                    <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-white truncate">{link.title}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium text-white truncate">{link.title}</h4>
+                          {link.isVerified && (
+                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full flex-shrink-0">
+                              Verified
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-400 truncate">{link.url}</p>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <button
-                          onClick={() => handleToggleActive(link)}
-                          className={`px-3 py-1 text-xs rounded-full ${
-                            link.isActive
-                              ? "bg-green-500/20 text-green-400"
-                              : "bg-gray-700 text-gray-400"
-                          }`}
-                        >
-                          {link.isActive ? "Active" : "Inactive"}
-                        </button>
-                        <button
-                          onClick={() => setEditingLink(link.id)}
-                          className="p-2 text-gray-400 hover:text-white"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteLink(link.id)}
-                          className="p-2 text-gray-400 hover:text-red-400"
-                        >
-                          Delete
-                        </button>
-                      </div>
                     </div>
-                  )}
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => handleToggleActive(link)}
+                        className={`px-3 py-1 text-xs rounded-full ${
+                          link.isActive ? "bg-green-500/20 text-green-400" : "bg-gray-700 text-gray-400"
+                        }`}
+                      >
+                        {link.isActive ? "Active" : "Inactive"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteLink(link.id)}
+                        className="p-2 text-gray-400 hover:text-red-400"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))
             )}
           </div>
         </div>
       </main>
-    </div>
-  );
-}
-
-function EditLinkForm({
-  link,
-  onSave,
-  onCancel,
-}: {
-  link: LinkData;
-  onSave: (id: string, title: string, url: string) => void;
-  onCancel: () => void;
-}) {
-  const [title, setTitle] = useState(link.title);
-  const [url, setUrl] = useState(link.url);
-
-  return (
-    <div className="space-y-3">
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-      />
-      <input
-        type="url"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-      />
-      <div className="flex gap-2">
-        <button
-          onClick={() => onSave(link.id, title, url)}
-          className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg"
-        >
-          Save
-        </button>
-        <button
-          onClick={onCancel}
-          className="px-4 py-2 bg-gray-700 text-white text-sm rounded-lg"
-        >
-          Cancel
-        </button>
-      </div>
     </div>
   );
 }
