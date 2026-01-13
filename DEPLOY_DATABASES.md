@@ -1,17 +1,17 @@
 # Deploy PostgreSQL + Redis to Proxmox LXC
 
-This guide will set up PostgreSQL and Redis on your Proxmox LXC container (192.168.1.222) so your PC can connect to them during development.
+This guide will set up PostgreSQL and Redis on your Proxmox LXC container (192.168.1.204) so your PC can connect to them during development.
 
 ## Step 1: Upload Docker Compose File to Proxmox LXC
 
 ```bash
-scp docker/docker-compose.proxmox.yml root@192.168.1.222:/root/xolinks-databases/docker-compose.yml
+scp docker/docker-compose.proxmox.yml root@192.168.1.204:/root/xolinks-databases/docker-compose.yml
 ```
 
 ## Step 2: SSH into Proxmox LXC and Start Containers
 
 ```bash
-ssh root@192.168.1.222
+ssh root@192.168.1.204
 ```
 
 Then run:
@@ -35,21 +35,21 @@ You should see both `xolinks-postgres` and `xolinks-redis` running.
 ### Test PostgreSQL:
 ```bash
 # Using psql (if installed)
-psql -h 192.168.1.222 -U xolinks -d xolinks -p 5432
+psql -h 192.168.1.204 -U xolinks -d xolinks -p 5432
 # Password: xolinks_secure_password_2024
 
 # Or using Docker on Proxmox LXC
-ssh root@192.168.1.222
+ssh root@192.168.1.204
 docker exec -it xolinks-postgres psql -U xolinks -d xolinks
 ```
 
 ### Test Redis:
 ```bash
 # Using redis-cli (if installed)
-redis-cli -h 192.168.1.222 -p 6379 -a xolinks_redis_password_2024
+redis-cli -h 192.168.1.204 -p 6379 -a xolinks_redis_password_2024
 
 # Or using Docker on Proxmox LXC
-ssh root@192.168.1.222
+ssh root@192.168.1.204
 docker exec -it xolinks-redis redis-cli -a xolinks_redis_password_2024
 ```
 
@@ -77,7 +77,7 @@ Your Next.js app will now connect to the databases on Proxmox!
 
 ### View Logs:
 ```bash
-ssh root@192.168.1.222
+ssh root@192.168.1.204
 cd /root/xolinks-databases
 docker compose logs -f
 ```
@@ -109,12 +109,12 @@ If you have a firewall, allow these ports from your PC's IP address.
 
 ## Connection Details
 
-- **PostgreSQL**: `192.168.1.222:5432`
+- **PostgreSQL**: `192.168.1.204:5432`
   - Username: `xolinks`
   - Password: `xolinks_secure_password_2024`
   - Database: `xolinks`
 
-- **Redis**: `192.168.1.222:6379`
+- **Redis**: `192.168.1.204:6379`
   - Password: `xolinks_redis_password_2024`
 
 These are already configured in your `.env` file!
