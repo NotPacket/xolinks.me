@@ -43,3 +43,5 @@ prisma/dev.db-journal
 # uploads
 /public/avatars/*
 !/public/avatars/.gitkeep
+
+/lib/generated/prisma

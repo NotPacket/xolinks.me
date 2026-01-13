@@ -1,0 +1,317 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USERS & AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique @db.VarChar(50)
+  email         String    @unique @db.VarChar(255)
+  emailVerified Boolean   @default(false)
+  passwordHash  String?   @db.VarChar(255)
+
+  // Profile
+  displayName   String?   @db.VarChar(100)
+  bio           String?   @db.Text
+  avatarUrl     String?   @db.VarChar(500)
+  location      String?   @db.VarChar(100)
+  theme         String    @default("space") @db.VarChar(50)
+
+  // Metadata
+  role          String    @default("user") @db.VarChar(20)
+  subscriptionTier   String  @default("free") @db.VarChar(50)
+  subscriptionStatus String  @default("active") @db.VarChar(50)
+  stripeCustomerId   String? @unique @db.VarChar(255)
+
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  // Relations
+  oauthAccounts     OAuthAccount[]
+  verificationTokens VerificationToken[]
+  links             Link[]
+  profileViews      ProfileView[]
+  linkClicks        LinkClick[]
+  linkClicksDaily   LinkClickDaily[]
+  referrerStats     ReferrerStat[]
+  geoStats          GeoStat[]
+  subscriptions     Subscription[]
+  payments          Payment[]
+  moderationFlags   ModerationFlag[] @relation("FlaggedUser")
+  flaggedBy         ModerationFlag[] @relation("Flagger")
+  resolvedFlags     ModerationFlag[] @relation("Resolver")
+  adminLogs         AdminLog[]
+
+  @@map("users")
+}
+
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String   @db.VarChar(50)
+  providerAccountId String   @db.VarChar(255)
+  accessToken       String?  @db.Text
+  refreshToken      String?  @db.Text
+  expiresAt         BigInt?
+  tokenType         String?  @db.VarChar(50)
+  scope             String?  @db.Text
+  idToken           String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("oauth_accounts")
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique @db.VarChar(255)
+  type      String   @db.VarChar(50)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("verification_tokens")
+}
+
+// ============================================
+// LINKS
+// ============================================
+
+model Link {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String   @db.VarChar(255)
+  url          String   @db.VarChar(2000)
+  platform     String?  @db.VarChar(50)
+  icon         String?  @db.VarChar(100)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkClicks        LinkClick[]
+  linkClicksDaily   LinkClickDaily[]
+  moderationFlags   ModerationFlag[]
+
+  @@map("links")
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+model ProfileView {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime @db.Date
+  totalViews  Int      @default(0)
+  uniqueViews Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("profile_views")
+}
+
+model LinkClick {
+  id         String   @id @default(cuid())
+  linkId     String
+  userId     String
+  visitorId  String?  @db.VarChar(255)
+  ipAddress  String?  @db.VarChar(45)
+  country    String?  @db.VarChar(2)
+  city       String?  @db.VarChar(100)
+  region     String?  @db.VarChar(100)
+  userAgent  String?  @db.Text
+  referrer   String?  @db.VarChar(500)
+  deviceType String?  @db.VarChar(50)
+  browser    String?  @db.VarChar(100)
+  os         String?  @db.VarChar(100)
+  clickedAt  DateTime @default(now())
+
+  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([linkId])
+  @@index([userId])
+  @@index([clickedAt])
+  @@map("link_clicks")
+}
+
+model LinkClickDaily {
+  id           String   @id @default(cuid())
+  linkId       String
+  userId       String
+  date         DateTime @db.Date
+  totalClicks  Int      @default(0)
+  uniqueClicks Int      @default(0)
+
+  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([linkId, date])
+  @@map("link_clicks_daily")
+}
+
+model ReferrerStat {
+  id             String   @id @default(cuid())
+  userId         String
+  date           DateTime @db.Date
+  referrerDomain String   @db.VarChar(255)
+  visits         Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, referrerDomain])
+  @@map("referrer_stats")
+}
+
+model GeoStat {
+  id      String   @id @default(cuid())
+  userId  String
+  date    DateTime @db.Date
+  country String   @db.VarChar(2)
+  city    String?  @db.VarChar(100)
+  visits  Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, country, city])
+  @@map("geo_stats")
+}
+
+// ============================================
+// SUBSCRIPTIONS
+// ============================================
+
+model Subscription {
+  id                    String    @id @default(cuid())
+  userId                String
+  stripeSubscriptionId  String?   @unique @db.VarChar(255)
+  stripePriceId         String?   @db.VarChar(255)
+  tier                  String    @db.VarChar(50)
+  status                String    @db.VarChar(50)
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAt              DateTime?
+  canceledAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@map("subscriptions")
+}
+
+model Payment {
+  id                     String    @id @default(cuid())
+  userId                 String
+  subscriptionId         String?
+  stripePaymentIntentId  String?   @unique @db.VarChar(255)
+  amount                 Int
+  currency               String    @default("usd") @db.VarChar(3)
+  status                 String    @db.VarChar(50)
+  createdAt              DateTime  @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@map("payments")
+}
+
+// ============================================
+// FEATURE FLAGS & ADMIN
+// ============================================
+
+model FeatureFlag {
+  id               String   @id @default(cuid())
+  name             String   @unique @db.VarChar(100)
+  description      String?  @db.Text
+  enabledForFree   Boolean  @default(false)
+  enabledForPro    Boolean  @default(false)
+  enabledForPremium Boolean @default(true)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("feature_flags")
+}
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique @db.VarChar(100)
+  value       String?  @db.Text
+  type        String   @default("string") @db.VarChar(50)
+  description String?  @db.Text
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model ModerationFlag {
+  id          String    @id @default(cuid())
+  userId      String
+  linkId      String?
+  reason      String    @db.VarChar(255)
+  description String?   @db.Text
+  flaggedById String?
+  status      String    @default("pending") @db.VarChar(50)
+  resolution  String?   @db.Text
+  resolvedById String?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  user       User  @relation("FlaggedUser", fields: [userId], references: [id], onDelete: Cascade)
+  link       Link? @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  flaggedBy  User? @relation("Flagger", fields: [flaggedById], references: [id], onDelete: SetNull)
+  resolvedBy User? @relation("Resolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@map("moderation_flags")
+}
+
+model AdminLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  action     String   @db.VarChar(100)
+  targetType String?  @db.VarChar(50)
+  targetId   String?  @db.VarChar(255)
+  details    Json?
+  ipAddress  String?  @db.VarChar(45)
+  createdAt  DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("admin_logs")
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(100)
+  subject   String   @db.VarChar(255)
+  body      String   @db.Text
+  variables Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("email_templates")
+}
