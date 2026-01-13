@@ -98,8 +98,14 @@ export default function DashboardPage() {
     const success = searchParams.get("success");
     const error = searchParams.get("error");
 
-    if (success === "github_connected") {
-      setMessage({ type: "success", text: "GitHub connected successfully!" });
+    if (success) {
+      const successMessages: Record<string, string> = {
+        github_connected: "GitHub connected successfully!",
+        discord_connected: "Discord connected successfully!",
+        twitch_connected: "Twitch connected successfully!",
+        spotify_connected: "Spotify connected successfully!",
+      };
+      setMessage({ type: "success", text: successMessages[success] || "Connected successfully!" });
       fetchPlatforms();
       fetchLinks();
     } else if (error) {
