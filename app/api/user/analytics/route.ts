@@ -36,8 +36,15 @@ export async function GET(request: NextRequest) {
     });
 
     // Get total stats
-    const totalViews = profileViews.reduce((sum: number, v) => sum + v.totalViews, 0);
-    const totalClicks = linkClicks.reduce((sum: number, c) => sum + c.totalClicks, 0);
+    let totalViews = 0;
+    for (const v of profileViews) {
+      totalViews += v.totalViews;
+    }
+
+    let totalClicks = 0;
+    for (const c of linkClicks) {
+      totalClicks += c.totalClicks;
+    }
 
     // Get clicks per link
     const linkStats = await prisma.linkClickDaily.groupBy({
@@ -52,22 +59,36 @@ export async function GET(request: NextRequest) {
     });
 
     // Get link details for stats
-    const linkIds = linkStats.map((s: typeof linkStats[number]) => s.linkId);
+    const linkIds: string[] = [];
+    for (const s of linkStats) {
+      linkIds.push(s.linkId);
+    }
+
     const links = await prisma.link.findMany({
       where: { id: { in: linkIds } },
       select: { id: true, title: true, url: true, platform: true },
     });
 
-    const linkStatsWithDetails = linkStats.map((stat: typeof linkStats[number]) => {
-      const link = links.find((l: typeof links[number]) => l.id === stat.linkId);
-      return {
+    const linkStatsWithDetails: Array<{
+      linkId: string;
+      title: string;
+      url: string;
+      platform: string | null;
+      clicks: number;
+    }> = [];
+
+    for (const stat of linkStats) {
+      const link = links.find((l) => l.id === stat.linkId);
+      linkStatsWithDetails.push({
         linkId: stat.linkId,
         title: link?.title || "Unknown",
         url: link?.url || "",
-        platform: link?.platform,
+        platform: link?.platform || null,
         clicks: stat._sum.totalClicks || 0,
-      };
-    }).sort((a, b) => b.clicks - a.clicks);
+      });
+    }
+
+    linkStatsWithDetails.sort((a, b) => b.clicks - a.clicks);
 
     // Get device breakdown
     const deviceStats = await prisma.linkClick.groupBy({
@@ -101,26 +122,45 @@ export async function GET(request: NextRequest) {
     }
 
     // Fill in views
-    profileViews.forEach((v) => {
+    for (const v of profileViews) {
       const dateStr = v.date.toISOString().split("T")[0];
       if (dailyData[dateStr]) {
         dailyData[dateStr].views = v.totalViews;
       }
-    });
+    }
 
     // Fill in clicks
-    linkClicks.forEach((c) => {
+    for (const c of linkClicks) {
       const dateStr = c.date.toISOString().split("T")[0];
       if (dailyData[dateStr]) {
         dailyData[dateStr].clicks += c.totalClicks;
       }
-    });
+    }
 
-    const chartData = Object.entries(dailyData).map(([date, data]) => ({
-      date,
-      views: data.views,
-      clicks: data.clicks,
-    }));
+    const chartData: Array<{ date: string; views: number; clicks: number }> = [];
+    for (const [date, data] of Object.entries(dailyData)) {
+      chartData.push({
+        date,
+        views: data.views,
+        clicks: data.clicks,
+      });
+    }
+
+    const deviceStatsFormatted: Array<{ device: string; count: number }> = [];
+    for (const d of deviceStats) {
+      deviceStatsFormatted.push({
+        device: d.deviceType || "Unknown",
+        count: d._count,
+      });
+    }
+
+    const browserStatsFormatted: Array<{ browser: string; count: number }> = [];
+    for (const b of browserStats) {
+      browserStatsFormatted.push({
+        browser: b.browser || "Unknown",
+        count: b._count,
+      });
+    }
 
     return NextResponse.json({
       summary: {
@@ -130,14 +170,8 @@ export async function GET(request: NextRequest) {
       },
       chartData,
       linkStats: linkStatsWithDetails,
-      deviceStats: deviceStats.map((d: typeof deviceStats[number]) => ({
-        device: d.deviceType || "Unknown",
-        count: d._count,
-      })),
-      browserStats: browserStats.map((b: typeof browserStats[number]) => ({
-        browser: b.browser || "Unknown",
-        count: b._count,
-      })),
+      deviceStats: deviceStatsFormatted,
+      browserStats: browserStatsFormatted,
     });
   } catch (error) {
     console.error("Analytics error:", error);
