@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const verifyLoginSchema = z.object({
   token: z.string().optional(),
-  code: z.string().length(6).optional(),
+  code: z.string().min(6).max(6).optional(),
 }).refine((data) => data.token || data.code, {
   message: "Either token or code is required",
 });
@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     // Validate input
     const result = verifyLoginSchema.safeParse(body);
     if (!result.success) {
+      console.error("Validation error:", result.error.issues);
       return NextResponse.json(
         { error: result.error.issues[0].message },
         { status: 400 }
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { token, code } = result.data;
+    console.log("Verify login attempt:", { hasToken: !!token, code: code ? `${code.substring(0, 2)}****` : null });
 
     // Find the login verification record
     let verification;
@@ -43,11 +45,12 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+      console.log("Token lookup result:", verification ? "found" : "not found");
     } else if (code) {
       // Find the most recent verification with this code that hasn't expired
       verification = await prisma.loginVerification.findFirst({
         where: {
-          code,
+          code: code,
           isVerified: false,
           expiresAt: { gt: new Date() },
         },
@@ -64,6 +67,27 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+      console.log("Code lookup result:", verification ? "found" : "not found");
+
+      // Debug: List all pending verifications if not found
+      if (!verification) {
+        const pendingVerifications = await prisma.loginVerification.findMany({
+          where: {
+            isVerified: false,
+            expiresAt: { gt: new Date() },
+          },
+          select: {
+            code: true,
+            createdAt: true,
+            expiresAt: true,
+          },
+        });
+        console.log("Pending verifications:", pendingVerifications.map(v => ({
+          code: `${v.code.substring(0, 2)}****`,
+          createdAt: v.createdAt,
+          expiresAt: v.expiresAt,
+        })));
+      }
     }
 
     if (!verification) {
@@ -106,6 +130,8 @@ export async function POST(request: NextRequest) {
 
     // Create session
     await createSession(verification.userId);
+
+    console.log("Login verified successfully for user:", verification.user.username);
 
     return NextResponse.json({
       message: "Login verified successfully",

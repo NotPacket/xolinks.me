@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
 import { loginSchema } from "@/lib/validation/schemas";
-import { randomBytes } from "crypto";
+import { randomBytes, randomInt } from "crypto";
 import { sendLoginVerificationEmail } from "@/lib/email";
 
 function parseUserAgent(userAgent: string | null) {
@@ -35,8 +35,8 @@ function parseUserAgent(userAgent: string | null) {
 }
 
 function generateCode(): string {
-  // Generate a 6-digit numeric code
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // Generate a cryptographically secure 6-digit numeric code
+  return randomInt(100000, 999999).toString();
 }
 
 export async function POST(request: NextRequest) {
@@ -121,8 +121,14 @@ export async function POST(request: NextRequest) {
     const code = generateCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+    console.log("Generated login verification:", {
+      userId: user.id,
+      code: `${code.substring(0, 2)}****`,
+      expiresAt,
+    });
+
     // Create login verification record
-    await prisma.loginVerification.create({
+    const verification = await prisma.loginVerification.create({
       data: {
         userId: user.id,
         token,
@@ -133,6 +139,11 @@ export async function POST(request: NextRequest) {
         browser,
         expiresAt,
       },
+    });
+
+    console.log("Saved verification to database:", {
+      id: verification.id,
+      code: `${verification.code.substring(0, 2)}****`,
     });
 
     // Send verification email
