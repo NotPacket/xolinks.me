@@ -51,3 +51,4 @@ tmpclaude-*
 # Temp files
 nul
 tmpclaude*
+.env.production
