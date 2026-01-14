@@ -33,6 +33,12 @@ export default function LoginPage() {
         return;
       }
 
+      // Check if login requires email verification
+      if (data.requiresVerification) {
+        router.push(`/verify-login?email=${encodeURIComponent(data.email)}`);
+        return;
+      }
+
       router.push("/dashboard");
     } catch {
       setError("Something went wrong. Please try again.");

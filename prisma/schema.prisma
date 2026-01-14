@@ -42,6 +42,7 @@ model User {
   // Relations
   oauthAccounts       OAuthAccount[]
   verificationTokens  VerificationToken[]
+  loginVerifications  LoginVerification[]
   platformConnections PlatformConnection[]
   links               Link[]
   profileViews      ProfileView[]
@@ -90,6 +91,26 @@ model VerificationToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("verification_tokens")
+}
+
+model LoginVerification {
+  id          String   @id @default(cuid())
+  userId      String
+  token       String   @unique @db.VarChar(255)
+  code        String   @db.VarChar(6)  // 6-digit code for easy entry
+  ipAddress   String?  @db.VarChar(45)
+  userAgent   String?  @db.Text
+  deviceType  String?  @db.VarChar(50)
+  browser     String?  @db.VarChar(100)
+  location    String?  @db.VarChar(255)
+  isVerified  Boolean  @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  verifiedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("login_verifications")
 }
 
 // ============================================

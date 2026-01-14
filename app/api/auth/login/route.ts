@@ -2,7 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
 import { loginSchema } from "@/lib/validation/schemas";
-import { createSession } from "@/lib/auth/session";
+import { randomBytes } from "crypto";
+import { sendLoginVerificationEmail } from "@/lib/email";
+
+function parseUserAgent(userAgent: string | null) {
+  if (!userAgent) return { browser: "Unknown", deviceType: "Unknown" };
+
+  let browser = "Unknown";
+  let deviceType = "Desktop";
+
+  // Detect browser
+  if (userAgent.includes("Firefox")) {
+    browser = "Firefox";
+  } else if (userAgent.includes("Edg")) {
+    browser = "Microsoft Edge";
+  } else if (userAgent.includes("Chrome")) {
+    browser = "Chrome";
+  } else if (userAgent.includes("Safari")) {
+    browser = "Safari";
+  } else if (userAgent.includes("Opera") || userAgent.includes("OPR")) {
+    browser = "Opera";
+  }
+
+  // Detect device type
+  if (userAgent.includes("Mobile") || userAgent.includes("Android")) {
+    deviceType = "Mobile";
+  } else if (userAgent.includes("Tablet") || userAgent.includes("iPad")) {
+    deviceType = "Tablet";
+  }
+
+  return { browser, deviceType };
+}
+
+function generateCode(): string {
+  // Generate a 6-digit numeric code
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +64,7 @@ export async function POST(request: NextRequest) {
         displayName: true,
         passwordHash: true,
         role: true,
+        emailVerified: true,
       },
     });
 
@@ -56,15 +92,73 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create session
-    await createSession(user.id);
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        { error: "Please verify your email address first." },
+        { status: 403 }
+      );
+    }
 
-    // Return user without password
-    const { passwordHash: _, ...userWithoutPassword } = user;
+    // Get device info
+    const userAgent = request.headers.get("user-agent");
+    const { browser, deviceType } = parseUserAgent(userAgent);
+
+    // Get IP address
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const ipAddress = forwardedFor ? forwardedFor.split(",")[0].trim() : "Unknown";
+
+    // Delete any existing unverified login verifications for this user
+    await prisma.loginVerification.deleteMany({
+      where: {
+        userId: user.id,
+        isVerified: false,
+      },
+    });
+
+    // Generate verification token and code
+    const token = randomBytes(32).toString("hex");
+    const code = generateCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Create login verification record
+    await prisma.loginVerification.create({
+      data: {
+        userId: user.id,
+        token,
+        code,
+        ipAddress,
+        userAgent: userAgent || undefined,
+        deviceType,
+        browser,
+        expiresAt,
+      },
+    });
+
+    // Send verification email
+    const emailResult = await sendLoginVerificationEmail(
+      user.email,
+      token,
+      code,
+      {
+        browser,
+        deviceType,
+        ipAddress,
+      }
+    );
+
+    if (!emailResult.success) {
+      console.error("Failed to send login verification email:", emailResult.error);
+      return NextResponse.json(
+        { error: "Failed to send verification email. Please try again." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
-      message: "Login successful",
-      user: userWithoutPassword,
+      requiresVerification: true,
+      message: "Please check your email for a verification code.",
+      email: email.replace(/(.{2})(.*)(@.*)/, "$1***$3"), // Mask email
     });
   } catch (error) {
     console.error("Login error:", error);
