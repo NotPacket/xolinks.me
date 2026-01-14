@@ -26,14 +26,14 @@ export async function GET() {
     });
 
     // Add platform metadata
-    const connectionsWithMeta = connections.map((conn) => ({
+    const connectionsWithMeta = connections.map((conn: typeof connections[number]) => ({
       ...conn,
       platformName: PLATFORMS[conn.platform]?.name || conn.platform,
       platformColor: PLATFORMS[conn.platform]?.color || "#666666",
     }));
 
     // List available platforms (not yet connected)
-    const connectedPlatforms = new Set(connections.map((c) => c.platform));
+    const connectedPlatforms = new Set(connections.map((c: typeof connections[number]) => c.platform));
     const availablePlatforms = Object.entries(PLATFORMS)
       .filter(([id]) => !connectedPlatforms.has(id))
       .map(([id, config]) => ({
