@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     },
     recentUsers,
     topUsers,
-    platformStats: platformStats.map((p) => ({
+    platformStats: platformStats.map((p: { platform: string; _count: { platform: number } }) => ({
       platform: p.platform,
       count: p._count.platform,
     })),
