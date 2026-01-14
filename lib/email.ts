@@ -1,11 +1,16 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const FROM_EMAIL = process.env.EMAIL_FROM || "xolinks.me <noreply@xolinks.me>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export async function sendVerificationEmail(email: string, token: string, username: string) {
+  if (!resend) {
+    console.error("Email not configured: RESEND_API_KEY is missing");
+    return { success: false, error: "Email not configured" };
+  }
+
   const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
 
   console.log("Sending email with:", { from: FROM_EMAIL, to: email, hasApiKey: !!process.env.RESEND_API_KEY });
@@ -76,6 +81,11 @@ export async function sendVerificationEmail(email: string, token: string, userna
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
+  if (!resend) {
+    console.error("Email not configured: RESEND_API_KEY is missing");
+    return { success: false, error: "Email not configured" };
+  }
+
   const resetUrl = `${APP_URL}/reset-password?token=${token}`;
 
   try {
