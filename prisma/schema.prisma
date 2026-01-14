@@ -23,7 +23,7 @@ model User {
   // Profile
   displayName   String?   @db.VarChar(100)
   bio           String?   @db.Text
-  avatarUrl     String?   @db.VarChar(500)
+  avatarUrl     String?   @db.Text
   location      String?   @db.VarChar(100)
   theme         String    @default("space") @db.VarChar(50)
 
@@ -34,9 +34,10 @@ model User {
   stripeCustomerId   String? @unique @db.VarChar(255)
 
   // Timestamps
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  lastLoginAt        DateTime?
+  lastUsernameChange DateTime?
 
   // Relations
   oauthAccounts       OAuthAccount[]

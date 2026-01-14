@@ -47,3 +47,7 @@ prisma/dev.db-journal
 /lib/generated/prisma
 tmpclaude-*
 .claude/
+
+# Temp files
+nul
+tmpclaude*

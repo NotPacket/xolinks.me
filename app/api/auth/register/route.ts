@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import prisma from "@/lib/db";
 import { registerSchema } from "@/lib/validation/schemas";
 import { createSession } from "@/lib/auth/session";
+import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,9 +67,28 @@ export async function POST(request: NextRequest) {
     // Create session
     await createSession(user.id);
 
+    // Generate verification token
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Save verification token
+    await prisma.verificationToken.create({
+      data: {
+        userId: user.id,
+        token,
+        type: "email_verification",
+        expiresAt,
+      },
+    });
+
+    // Send verification email (don't block registration if email fails)
+    sendVerificationEmail(email, token, username).catch((err) => {
+      console.error("Failed to send verification email:", err);
+    });
+
     return NextResponse.json(
       {
-        message: "Registration successful",
+        message: "Registration successful! Please check your email to verify your account.",
         user,
       },
       { status: 201 }
