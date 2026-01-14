@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Get total stats
-    const totalViews = profileViews.reduce((sum, v) => sum + v.totalViews, 0);
-    const totalClicks = linkClicks.reduce((sum, c) => sum + c.totalClicks, 0);
+    const totalViews = profileViews.reduce((sum: number, v) => sum + v.totalViews, 0);
+    const totalClicks = linkClicks.reduce((sum: number, c) => sum + c.totalClicks, 0);
 
     // Get clicks per link
     const linkStats = await prisma.linkClickDaily.groupBy({
@@ -52,14 +52,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Get link details for stats
-    const linkIds = linkStats.map((s) => s.linkId);
+    const linkIds = linkStats.map((s: typeof linkStats[number]) => s.linkId);
     const links = await prisma.link.findMany({
       where: { id: { in: linkIds } },
       select: { id: true, title: true, url: true, platform: true },
     });
 
-    const linkStatsWithDetails = linkStats.map((stat) => {
-      const link = links.find((l) => l.id === stat.linkId);
+    const linkStatsWithDetails = linkStats.map((stat: typeof linkStats[number]) => {
+      const link = links.find((l: typeof links[number]) => l.id === stat.linkId);
       return {
         linkId: stat.linkId,
         title: link?.title || "Unknown",
@@ -130,11 +130,11 @@ export async function GET(request: NextRequest) {
       },
       chartData,
       linkStats: linkStatsWithDetails,
-      deviceStats: deviceStats.map((d) => ({
+      deviceStats: deviceStats.map((d: typeof deviceStats[number]) => ({
         device: d.deviceType || "Unknown",
         count: d._count,
       })),
-      browserStats: browserStats.map((b) => ({
+      browserStats: browserStats.map((b: typeof browserStats[number]) => ({
         browser: b.browser || "Unknown",
         count: b._count,
       })),
