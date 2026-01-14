@@ -35,7 +35,7 @@ export default function LoginPage() {
 
       // Check if login requires email verification
       if (data.requiresVerification) {
-        router.push(`/verify-login?email=${encodeURIComponent(data.email)}`);
+        router.push(`/verify-login?email=${encodeURIComponent(data.email)}&display=${encodeURIComponent(data.maskedEmail)}`);
         return;
       }
 

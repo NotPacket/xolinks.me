@@ -9,6 +9,7 @@ function VerifyLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
+  const displayEmail = searchParams.get("display") || email;
   const tokenFromUrl = searchParams.get("token");
 
   const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -103,7 +104,7 @@ function VerifyLoginForm() {
       const res = await fetch("/api/auth/verify-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: finalCode }),
+        body: JSON.stringify({ code: finalCode, email }),
       });
 
       const data = await res.json();
@@ -251,7 +252,7 @@ function VerifyLoginForm() {
           marginBottom: "32px",
           fontWeight: "500"
         }}>
-          {email || "your email"}
+          {displayEmail || "your email"}
         </p>
 
         {/* Code Input */}

@@ -6,8 +6,9 @@ import { z } from "zod";
 const verifyLoginSchema = z.object({
   token: z.string().optional(),
   code: z.string().min(6).max(6).optional(),
-}).refine((data) => data.token || data.code, {
-  message: "Either token or code is required",
+  email: z.string().email().optional(),
+}).refine((data) => data.token || (data.code && data.email), {
+  message: "Either token, or code with email is required",
 });
 
 export async function POST(request: NextRequest) {
@@ -24,8 +25,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, code } = result.data;
-    console.log("Verify login attempt:", { hasToken: !!token, code: code ? `${code.substring(0, 2)}****` : null });
+    const { token, code, email } = result.data;
+    console.log("Verify login attempt:", { hasToken: !!token, code: code ? `${code.substring(0, 2)}****` : null, email: email ? `${email.substring(0, 3)}***` : null });
 
     // Find the login verification record
     let verification;
@@ -46,10 +47,25 @@ export async function POST(request: NextRequest) {
         },
       });
       console.log("Token lookup result:", verification ? "found" : "not found");
-    } else if (code) {
-      // Find the most recent verification with this code that hasn't expired
+    } else if (code && email) {
+      // First find the user by email
+      const user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+        select: { id: true },
+      });
+
+      if (!user) {
+        console.log("User not found for email");
+        return NextResponse.json(
+          { error: "Invalid or expired verification code." },
+          { status: 400 }
+        );
+      }
+
+      // Find the verification for this specific user with this code
       verification = await prisma.loginVerification.findFirst({
         where: {
+          userId: user.id,
           code: code,
           isVerified: false,
           expiresAt: { gt: new Date() },
@@ -67,12 +83,13 @@ export async function POST(request: NextRequest) {
           },
         },
       });
-      console.log("Code lookup result:", verification ? "found" : "not found");
+      console.log("Code lookup result for user:", verification ? "found" : "not found");
 
-      // Debug: List all pending verifications if not found
+      // Debug: List pending verification for this user if not found
       if (!verification) {
-        const pendingVerifications = await prisma.loginVerification.findMany({
+        const pendingVerification = await prisma.loginVerification.findFirst({
           where: {
+            userId: user.id,
             isVerified: false,
             expiresAt: { gt: new Date() },
           },
@@ -82,11 +99,15 @@ export async function POST(request: NextRequest) {
             expiresAt: true,
           },
         });
-        console.log("Pending verifications:", pendingVerifications.map(v => ({
-          code: `${v.code.substring(0, 2)}****`,
-          createdAt: v.createdAt,
-          expiresAt: v.expiresAt,
-        })));
+        if (pendingVerification) {
+          console.log("User's pending verification:", {
+            code: `${pendingVerification.code.substring(0, 2)}****`,
+            createdAt: pendingVerification.createdAt,
+            expiresAt: pendingVerification.expiresAt,
+          });
+        } else {
+          console.log("No pending verification found for user");
+        }
       }
     }
 

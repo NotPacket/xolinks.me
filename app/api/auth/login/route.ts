@@ -169,7 +169,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       requiresVerification: true,
       message: "Please check your email for a verification code.",
-      email: email.replace(/(.{2})(.*)(@.*)/, "$1***$3"), // Mask email
+      email: email, // Full email for verification
+      maskedEmail: email.replace(/(.{2})(.*)(@.*)/, "$1***$3"), // Masked for display
     });
   } catch (error) {
     console.error("Login error:", error);
