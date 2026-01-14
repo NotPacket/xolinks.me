@@ -95,7 +95,7 @@ export async function PATCH(request: NextRequest) {
 
     // Update all links in a transaction
     await prisma.$transaction(
-      result.data.links.map((link) =>
+      result.data.links.map((link: { id: string; displayOrder: number }) =>
         prisma.link.updateMany({
           where: { id: link.id, userId: session.userId },
           data: { displayOrder: link.displayOrder },
