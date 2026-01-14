@@ -452,9 +452,11 @@ export default function Home() {
         <div style={{ display: "flex", gap: "24px" }}>
           <Link href="/login" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Sign In</Link>
           <Link href="/register" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Sign Up</Link>
+          <Link href="/terms" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Terms</Link>
+          <Link href="/privacy" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Privacy</Link>
         </div>
         <p style={{ color: "#6b7280", fontSize: "14px" }}>
-          © 2026 xolinks.me. All rights reserved.
+          © 2025 xolinks.me. All rights reserved.
         </p>
       </footer>
       </div>
