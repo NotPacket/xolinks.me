@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
     newUsersToday,
     newUsersThisWeek,
     activeUsers,
+    featuredCount,
+    pendingReportsCount,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.link.count(),
@@ -40,6 +42,12 @@ export async function GET(request: NextRequest) {
           gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         },
       },
+    }),
+    prisma.user.count({
+      where: { isFeatured: true },
+    }),
+    prisma.moderationFlag.count({
+      where: { status: "pending" },
     }),
   ]);
 
@@ -91,6 +99,25 @@ export async function GET(request: NextRequest) {
     _count: { platform: true },
   });
 
+  // Get featured users
+  const featuredUsers = await prisma.user.findMany({
+    where: { isFeatured: true },
+    orderBy: { totalProfileViews: "desc" },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+      totalProfileViews: true,
+      _count: {
+        select: {
+          links: true,
+          linkClicks: true,
+        },
+      },
+    },
+  });
+
   return NextResponse.json({
     stats: {
       totalUsers,
@@ -100,9 +127,12 @@ export async function GET(request: NextRequest) {
       newUsersToday,
       newUsersThisWeek,
       activeUsers,
+      featuredCount,
+      pendingReportsCount,
     },
     recentUsers,
     topUsers,
+    featuredUsers,
     platformStats: platformStats.map((p: { platform: string; _count: { platform: number } }) => ({
       platform: p.platform,
       count: p._count.platform,

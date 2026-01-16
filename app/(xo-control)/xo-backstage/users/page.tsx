@@ -9,8 +9,11 @@ interface User {
   username: string;
   email: string;
   displayName: string | null;
+  avatarUrl: string | null;
   role: string;
   subscriptionTier: string;
+  isFeatured: boolean;
+  totalProfileViews: number;
   createdAt: string;
   lastLoginAt: string | null;
   _count: {
@@ -44,8 +47,10 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [featuredFilter, setFeaturedFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [togglingFeatured, setTogglingFeatured] = useState<string | null>(null);
 
   const fetchUsers = useCallback(
     async (page = 1) => {
@@ -69,7 +74,16 @@ export default function AdminUsersPage() {
         }
 
         const data = await res.json();
-        setUsers(data.users);
+        let filteredUsers = data.users;
+
+        // Client-side featured filter
+        if (featuredFilter === "featured") {
+          filteredUsers = filteredUsers.filter((u: User) => u.isFeatured);
+        } else if (featuredFilter === "not-featured") {
+          filteredUsers = filteredUsers.filter((u: User) => !u.isFeatured);
+        }
+
+        setUsers(filteredUsers);
         setPagination(data.pagination);
       } catch {
         setError("Failed to load users");
@@ -77,7 +91,7 @@ export default function AdminUsersPage() {
         setLoading(false);
       }
     },
-    [search, roleFilter, router]
+    [search, roleFilter, featuredFilter, router]
   );
 
   useEffect(() => {
@@ -94,6 +108,25 @@ export default function AdminUsersPage() {
     if (res.ok) {
       setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
       setEditingUser(null);
+    }
+  };
+
+  const handleToggleFeatured = async (userId: string, currentStatus: boolean) => {
+    setTogglingFeatured(userId);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, updates: { isFeatured: !currentStatus } }),
+      });
+
+      if (res.ok) {
+        setUsers(users.map((u) =>
+          u.id === userId ? { ...u, isFeatured: !currentStatus } : u
+        ));
+      }
+    } finally {
+      setTogglingFeatured(null);
     }
   };
 
@@ -115,6 +148,8 @@ export default function AdminUsersPage() {
       </div>
     );
   }
+
+  const featuredCount = users.filter(u => u.isFeatured).length;
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#030712", color: "#fff" }}>
@@ -152,6 +187,18 @@ export default function AdminUsersPage() {
               </svg>
             </div>
             <h1 style={{ fontSize: "20px", fontWeight: "bold" }}>User Management</h1>
+            {featuredCount > 0 && (
+              <span style={{
+                padding: "4px 12px",
+                backgroundColor: "rgba(251, 191, 36, 0.2)",
+                color: "#fbbf24",
+                fontSize: "12px",
+                borderRadius: "50px",
+                fontWeight: "500"
+              }}>
+                {featuredCount} Featured
+              </span>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
             <Link href="/xo-backstage" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>
@@ -193,6 +240,15 @@ export default function AdminUsersPage() {
             <option value="">All Roles</option>
             <option value="user">Users</option>
             <option value="admin">Admins</option>
+          </select>
+          <select
+            value={featuredFilter}
+            onChange={(e) => setFeaturedFilter(e.target.value)}
+            style={{ ...inputStyle, minWidth: "140px" }}
+          >
+            <option value="">All Users</option>
+            <option value="featured">Featured Only</option>
+            <option value="not-featured">Not Featured</option>
           </select>
           <button
             onClick={() => fetchUsers(1)}
@@ -237,7 +293,7 @@ export default function AdminUsersPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead style={{ backgroundColor: "rgba(31, 41, 55, 0.5)" }}>
                     <tr>
-                      {["User", "Role", "Tier", "Links", "Clicks", "Joined", "Actions"].map((header) => (
+                      {["User", "Role", "Tier", "Views", "Clicks", "Featured", "Actions"].map((header) => (
                         <th
                           key={header}
                           style={{
@@ -260,7 +316,8 @@ export default function AdminUsersPage() {
                       <tr
                         key={user.id}
                         style={{
-                          borderTop: idx > 0 ? "1px solid #374151" : "none"
+                          borderTop: idx > 0 ? "1px solid #374151" : "none",
+                          backgroundColor: user.isFeatured ? "rgba(251, 191, 36, 0.05)" : "transparent"
                         }}
                       >
                         <td style={{ padding: "14px 16px" }}>
@@ -268,18 +325,34 @@ export default function AdminUsersPage() {
                             <div style={{
                               width: "40px",
                               height: "40px",
-                              background: "linear-gradient(135deg, #a855f7, #3b82f6)",
+                              background: user.isFeatured
+                                ? "linear-gradient(135deg, #fbbf24, #f59e0b)"
+                                : "linear-gradient(135deg, #a855f7, #3b82f6)",
                               borderRadius: "10px",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              fontWeight: "bold"
+                              fontWeight: "bold",
+                              overflow: "hidden"
                             }}>
-                              {(user.displayName || user.username)[0].toUpperCase()}
+                              {user.avatarUrl ? (
+                                <img
+                                  src={user.avatarUrl}
+                                  alt={user.username}
+                                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                />
+                              ) : (
+                                (user.displayName || user.username)[0].toUpperCase()
+                              )}
                             </div>
                             <div>
-                              <p style={{ fontWeight: "500", marginBottom: "2px" }}>
+                              <p style={{ fontWeight: "500", marginBottom: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
                                 {user.displayName || user.username}
+                                {user.isFeatured && (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                  </svg>
+                                )}
                               </p>
                               <p style={{ color: "#6b7280", fontSize: "13px" }}>@{user.username}</p>
                             </div>
@@ -320,28 +393,54 @@ export default function AdminUsersPage() {
                         <td style={{ padding: "14px 16px" }}>
                           <span style={{
                             padding: "4px 10px",
-                            backgroundColor: "rgba(168, 85, 247, 0.1)",
-                            color: "#a855f7",
+                            backgroundColor: user.subscriptionTier === "pro" ? "rgba(168, 85, 247, 0.2)" : "rgba(75, 85, 99, 0.2)",
+                            color: user.subscriptionTier === "pro" ? "#a855f7" : "#9ca3af",
                             borderRadius: "50px",
                             fontSize: "12px"
                           }}>
                             {user.subscriptionTier}
                           </span>
                         </td>
-                        <td style={{ padding: "14px 16px" }}>
-                          <span style={{ fontWeight: "500" }}>{user._count.links}</span>
-                          <span style={{ color: "#6b7280", fontSize: "13px", marginLeft: "4px" }}>
-                            ({user._count.platformConnections} verified)
-                          </span>
+                        <td style={{ padding: "14px 16px", color: "#9ca3af" }}>
+                          {user.totalProfileViews.toLocaleString()}
                         </td>
                         <td style={{ padding: "14px 16px", color: "#a855f7", fontWeight: "500" }}>
                           {user._count.linkClicks.toLocaleString()}
                         </td>
-                        <td style={{ padding: "14px 16px", color: "#9ca3af", fontSize: "14px" }}>
-                          {new Date(user.createdAt).toLocaleDateString()}
+                        <td style={{ padding: "14px 16px" }}>
+                          <button
+                            onClick={() => handleToggleFeatured(user.id, user.isFeatured)}
+                            disabled={togglingFeatured === user.id}
+                            style={{
+                              padding: "6px 14px",
+                              backgroundColor: user.isFeatured ? "rgba(251, 191, 36, 0.2)" : "rgba(75, 85, 99, 0.3)",
+                              border: user.isFeatured ? "1px solid rgba(251, 191, 36, 0.3)" : "1px solid transparent",
+                              borderRadius: "8px",
+                              color: user.isFeatured ? "#fbbf24" : "#9ca3af",
+                              cursor: togglingFeatured === user.id ? "wait" : "pointer",
+                              fontSize: "13px",
+                              fontWeight: "500",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              transition: "all 0.2s ease"
+                            }}
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill={user.isFeatured ? "#fbbf24" : "none"}
+                              stroke={user.isFeatured ? "#fbbf24" : "#9ca3af"}
+                              strokeWidth="2"
+                            >
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                            {togglingFeatured === user.id ? "..." : user.isFeatured ? "Featured" : "Feature"}
+                          </button>
                         </td>
                         <td style={{ padding: "14px 16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <button
                               onClick={() => setEditingUser(user.id)}
                               style={{
@@ -377,6 +476,12 @@ export default function AdminUsersPage() {
                   </tbody>
                 </table>
               </div>
+
+              {users.length === 0 && (
+                <div style={{ padding: "32px", textAlign: "center", color: "#6b7280" }}>
+                  No users found matching your criteria
+                </div>
+              )}
 
               {/* Pagination */}
               {pagination && pagination.pages > 1 && (

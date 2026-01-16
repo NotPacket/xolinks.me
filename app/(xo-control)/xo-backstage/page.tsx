@@ -12,6 +12,8 @@ interface Stats {
   newUsersToday: number;
   newUsersThisWeek: number;
   activeUsers: number;
+  featuredCount: number;
+  pendingReportsCount: number;
 }
 
 interface RecentUser {
@@ -38,6 +40,18 @@ interface TopUser {
   };
 }
 
+interface FeaturedUser {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  totalProfileViews: number;
+  _count: {
+    links: number;
+    linkClicks: number;
+  };
+}
+
 interface PlatformStat {
   platform: string;
   count: number;
@@ -55,6 +69,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [topUsers, setTopUsers] = useState<TopUser[]>([]);
+  const [featuredUsers, setFeaturedUsers] = useState<FeaturedUser[]>([]);
   const [platformStats, setPlatformStats] = useState<PlatformStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +92,7 @@ export default function AdminDashboard() {
         setStats(data.stats);
         setRecentUsers(data.recentUsers);
         setTopUsers(data.topUsers);
+        setFeaturedUsers(data.featuredUsers || []);
         setPlatformStats(data.platformStats);
       } catch {
         setError("Failed to load admin data");
@@ -206,8 +222,27 @@ export default function AdminDashboard() {
             <Link href="/xo-backstage/users" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>
               Users
             </Link>
-            <Link href="/xo-backstage/reports" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>
+            <Link href="/xo-backstage/reports" style={{
+              color: "#9ca3af",
+              textDecoration: "none",
+              fontSize: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}>
               Reports
+              {stats && stats.pendingReportsCount > 0 && (
+                <span style={{
+                  padding: "2px 8px",
+                  backgroundColor: "#ef4444",
+                  color: "#fff",
+                  fontSize: "11px",
+                  borderRadius: "50px",
+                  fontWeight: "600"
+                }}>
+                  {stats.pendingReportsCount}
+                </span>
+              )}
             </Link>
             <Link href="/dashboard" style={{
               padding: "8px 16px",
@@ -237,13 +272,97 @@ export default function AdminDashboard() {
           <StatCard label="Total Views" value={stats?.totalViews || 0} icon="eye" />
           <StatCard label="New Today" value={stats?.newUsersToday || 0} highlight="#4ade80" icon="plus" />
           <StatCard label="New This Week" value={stats?.newUsersThisWeek || 0} highlight="#60a5fa" icon="calendar" />
-          <StatCard label="Active (30d)" value={stats?.activeUsers || 0} highlight="#a855f7" icon="activity" />
-          <StatCard
-            label="Conversion"
-            value={`${stats && stats.totalUsers > 0 ? ((stats.activeUsers / stats.totalUsers) * 100).toFixed(1) : 0}%`}
-            icon="percent"
-          />
+          <StatCard label="Featured" value={stats?.featuredCount || 0} highlight="#fbbf24" icon="star" />
+          <StatCard label="Pending Reports" value={stats?.pendingReportsCount || 0} highlight={stats?.pendingReportsCount ? "#ef4444" : "#6b7280"} icon="flag" />
         </div>
+
+        {/* Featured Profiles Section */}
+        {featuredUsers.length > 0 && (
+          <div style={{ ...cardStyle, marginBottom: "24px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{
+                  width: "32px",
+                  height: "32px",
+                  backgroundColor: "rgba(251, 191, 36, 0.2)",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: "18px", fontWeight: "600" }}>Featured Profiles</h3>
+                <span style={{
+                  padding: "4px 10px",
+                  backgroundColor: "rgba(251, 191, 36, 0.1)",
+                  color: "#fbbf24",
+                  fontSize: "12px",
+                  borderRadius: "50px"
+                }}>
+                  {featuredUsers.length} active
+                </span>
+              </div>
+              <Link href="/xo-backstage/users?filter=featured" style={{
+                padding: "6px 14px",
+                backgroundColor: "rgba(251, 191, 36, 0.1)",
+                color: "#fbbf24",
+                borderRadius: "8px",
+                textDecoration: "none",
+                fontSize: "13px"
+              }}>
+                Manage Featured
+              </Link>
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: "16px"
+            }}>
+              {featuredUsers.map((user) => (
+                <div
+                  key={user.id}
+                  style={{
+                    padding: "16px",
+                    backgroundColor: "rgba(31, 41, 55, 0.5)",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(251, 191, 36, 0.2)"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                    <div style={{
+                      width: "44px",
+                      height: "44px",
+                      background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
+                      borderRadius: "10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: "bold",
+                      overflow: "hidden"
+                    }}>
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt={user.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        (user.displayName || user.username)[0].toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: "500", marginBottom: "2px" }}>{user.displayName || user.username}</p>
+                      <p style={{ color: "#6b7280", fontSize: "13px" }}>@{user.username}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#9ca3af" }}>
+                    <span>{user.totalProfileViews.toLocaleString()} views</span>
+                    <span>{user._count.linkClicks.toLocaleString()} clicks</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{
           display: "grid",
@@ -455,6 +574,8 @@ function StatCard({
     calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>,
     activity: <><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></>,
     percent: <><line x1="19" y1="5" x2="5" y2="19" /><circle cx="6.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" /></>,
+    star: <><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></>,
+    flag: <><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></>,
   };
 
   return (

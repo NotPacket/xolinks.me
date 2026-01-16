@@ -38,8 +38,11 @@ export async function GET(request: NextRequest) {
         username: true,
         email: true,
         displayName: true,
+        avatarUrl: true,
         role: true,
         subscriptionTier: true,
+        isFeatured: true,
+        totalProfileViews: true,
         createdAt: true,
         lastLoginAt: true,
         _count: {
@@ -77,11 +80,15 @@ export async function PUT(request: NextRequest) {
   }
 
   // Only allow certain fields to be updated
-  const allowedFields = ["role", "subscriptionTier", "subscriptionStatus"];
-  const filteredUpdates: Record<string, string> = {};
+  const allowedStringFields = ["role", "subscriptionTier", "subscriptionStatus"];
+  const allowedBooleanFields = ["isFeatured"];
+  const filteredUpdates: Record<string, string | boolean> = {};
 
   for (const [key, value] of Object.entries(updates)) {
-    if (allowedFields.includes(key) && typeof value === "string") {
+    if (allowedStringFields.includes(key) && typeof value === "string") {
+      filteredUpdates[key] = value;
+    }
+    if (allowedBooleanFields.includes(key) && typeof value === "boolean") {
       filteredUpdates[key] = value;
     }
   }
@@ -94,6 +101,7 @@ export async function PUT(request: NextRequest) {
       username: true,
       role: true,
       subscriptionTier: true,
+      isFeatured: true,
     },
   });
 
