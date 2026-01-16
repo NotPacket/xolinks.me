@@ -267,6 +267,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                 href={profile.donationUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                className="donation-button"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -282,14 +283,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   textDecoration: "none",
                   boxShadow: "0 4px 15px rgba(245, 158, 11, 0.3)",
                   transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 6px 20px rgba(245, 158, 11, 0.4)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 15px rgba(245, 158, 11, 0.3)";
                 }}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -345,6 +338,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             box-shadow: 0 0 50px ${theme.accent}70, 0 0 80px ${theme.accent}30;
             transform: scale(1.02);
           }
+        }
+        .donation-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4) !important;
         }
       `}</style>
     </div>
