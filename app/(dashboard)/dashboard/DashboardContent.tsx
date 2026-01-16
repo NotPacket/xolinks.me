@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import AchievementsSection from "@/components/AchievementsSection";
 
 interface UserData {
   id: string;
@@ -591,6 +592,9 @@ export default function DashboardContent() {
             </div>
           )}
         </div>
+
+        {/* Achievements */}
+        <AchievementsSection />
       </main>
     </div>
   );

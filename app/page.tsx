@@ -1,5 +1,6 @@
 import Link from "next/link";
 import LandingBackground from "@/components/LandingBackground";
+import FeaturedProfiles from "@/components/FeaturedProfiles";
 
 export default function Home() {
   return (
@@ -339,6 +340,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Featured Profiles */}
+      <FeaturedProfiles />
 
       {/* How It Works */}
       <section style={{

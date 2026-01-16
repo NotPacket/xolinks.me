@@ -125,3 +125,28 @@ export const THEME_LIST = Object.values(THEMES);
 export function getTheme(themeId: string): Theme {
   return THEMES[themeId] || THEMES.space;
 }
+
+// Create a Theme object from a custom theme database record
+export function createCustomTheme(customTheme: {
+  id: string;
+  name: string;
+  backgroundColor: string;
+  textColor: string;
+  buttonColor: string;
+  buttonTextColor: string;
+  accentColor: string | null;
+}): Theme {
+  return {
+    id: `custom:${customTheme.id}`,
+    name: customTheme.name,
+    preview: customTheme.backgroundColor,
+    background: customTheme.backgroundColor,
+    cardBg: "rgba(31, 41, 55, 0.5)",
+    cardBorder: `${customTheme.accentColor || customTheme.buttonColor}40`,
+    cardHoverBg: "rgba(31, 41, 55, 0.7)",
+    cardHoverBorder: `${customTheme.accentColor || customTheme.buttonColor}70`,
+    textPrimary: customTheme.textColor,
+    textSecondary: `${customTheme.textColor}99`,
+    accent: customTheme.accentColor || customTheme.buttonColor,
+  };
+}

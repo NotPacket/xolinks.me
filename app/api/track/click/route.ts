@@ -69,6 +69,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Update user's total click count for achievements/leaderboard
+    await prisma.user.update({
+      where: { id: link.userId },
+      data: { totalLinkClicks: { increment: 1 } },
+    });
+
     return NextResponse.json({ success: true, url: link.url });
   } catch (error) {
     console.error("Track click error:", error);

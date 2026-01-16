@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ThemeEditor from "@/components/ThemeEditor";
 
 const THEMES = [
   { id: "space", name: "Space", gradient: "linear-gradient(to bottom right, #581c87, #1e3a8a, #000)", desc: "Twinkling stars" },
@@ -24,7 +25,9 @@ interface UserProfile {
   location: string | null;
   avatarUrl: string | null;
   theme: string;
+  donationUrl: string | null;
   lastUsernameChange: string | null;
+  subscriptionTier: string;
 }
 
 const cardStyle = {
@@ -70,6 +73,7 @@ export default function SettingsPage() {
     bio: "",
     location: "",
     theme: "space",
+    donationUrl: "",
   });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -93,6 +97,7 @@ export default function SettingsPage() {
           bio: data.user.bio || "",
           location: data.user.location || "",
           theme: data.user.theme || "space",
+          donationUrl: data.user.donationUrl || "",
         });
       } catch {
         router.push("/login");
@@ -577,6 +582,44 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Donation/Support Link */}
+        <div style={cardStyle}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+            <div style={{
+              width: "40px",
+              height: "40px",
+              background: "linear-gradient(135deg, #f59e0b, #ef4444)",
+              borderRadius: "10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 style={{ fontSize: "18px", fontWeight: "600" }}>Support Link</h2>
+              <p style={{ color: "#9ca3af", fontSize: "13px" }}>Let visitors support you with donations or tips</p>
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Donation URL</label>
+            <input
+              type="url"
+              value={formData.donationUrl}
+              onChange={(e) => setFormData({ ...formData, donationUrl: e.target.value })}
+              placeholder="https://ko-fi.com/yourname or https://buymeacoffee.com/yourname"
+              maxLength={500}
+              style={inputStyle}
+            />
+            <p style={{ marginTop: "8px", fontSize: "13px", color: "#6b7280" }}>
+              Add a link to Ko-fi, Buy Me a Coffee, Patreon, or any donation page. A &quot;Support Me&quot; button will appear on your profile.
+            </p>
+          </div>
+        </div>
+
         {/* Theme Selection */}
         <div style={cardStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
@@ -675,6 +718,9 @@ export default function SettingsPage() {
             ))}
           </div>
         </div>
+
+        {/* Custom Themes */}
+        <ThemeEditor />
 
         {/* Save Button */}
         <button

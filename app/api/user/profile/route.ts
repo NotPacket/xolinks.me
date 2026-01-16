@@ -22,6 +22,8 @@ export async function GET() {
         avatarUrl: true,
         location: true,
         theme: true,
+        donationUrl: true,
+        subscriptionTier: true,
         lastUsernameChange: true,
       },
     });
@@ -62,7 +64,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { displayName, bio, location, theme, username } = body;
+    const { displayName, bio, location, theme, username, donationUrl } = body;
 
     // Validate theme
     if (theme && !THEMES[theme]) {
@@ -78,6 +80,17 @@ export async function PUT(request: NextRequest) {
     }
     if (location && location.length > 100) {
       return NextResponse.json({ error: "Location too long" }, { status: 400 });
+    }
+    if (donationUrl && donationUrl.length > 500) {
+      return NextResponse.json({ error: "Donation URL too long" }, { status: 400 });
+    }
+    // Validate donation URL format if provided
+    if (donationUrl && donationUrl.length > 0) {
+      try {
+        new URL(donationUrl);
+      } catch {
+        return NextResponse.json({ error: "Invalid donation URL format" }, { status: 400 });
+      }
     }
 
     // Handle username change
@@ -139,6 +152,7 @@ export async function PUT(request: NextRequest) {
         ...(bio !== undefined && { bio }),
         ...(location !== undefined && { location }),
         ...(theme !== undefined && { theme }),
+        ...(donationUrl !== undefined && { donationUrl: donationUrl || null }),
         ...usernameUpdate,
       },
       select: {
@@ -150,6 +164,8 @@ export async function PUT(request: NextRequest) {
         avatarUrl: true,
         location: true,
         theme: true,
+        donationUrl: true,
+        subscriptionTier: true,
         lastUsernameChange: true,
       },
     });

@@ -4,7 +4,8 @@ import prisma from "@/lib/db";
 import Link from "next/link";
 import ProfileLinks from "./ProfileLinks";
 import ReportModal from "./ReportModal";
-import { getTheme } from "@/lib/themes/config";
+import AchievementBadges from "@/components/AchievementBadges";
+import { getTheme, createCustomTheme } from "@/lib/themes/config";
 import ThemeBackground from "@/components/ThemeBackground";
 
 interface ProfilePageProps {
@@ -23,6 +24,8 @@ async function getProfile(username: string) {
       bio: true,
       avatarUrl: true,
       theme: true,
+      donationUrl: true,
+      totalProfileViews: true,
       links: {
         where: { isActive: true },
         orderBy: { displayOrder: "asc" },
@@ -34,6 +37,18 @@ async function getProfile(username: string) {
           icon: true,
           isVerified: true,
         },
+      },
+      achievements: {
+        include: {
+          achievement: true,
+        },
+        orderBy: {
+          unlockedAt: "desc",
+        },
+      },
+      customThemes: {
+        where: { isActive: true },
+        take: 1,
       },
     },
   });
@@ -49,6 +64,7 @@ async function trackProfileView(userId: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Update daily analytics
   await prisma.profileView.upsert({
     where: {
       userId_date: {
@@ -65,6 +81,12 @@ async function trackProfileView(userId: string) {
       totalViews: 1,
       uniqueViews: 1,
     },
+  });
+
+  // Update user's total profile views for achievements/leaderboard
+  await prisma.user.update({
+    where: { id: userId },
+    data: { totalProfileViews: { increment: 1 } },
   });
 }
 
@@ -95,7 +117,11 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     notFound();
   }
 
-  const theme = getTheme(profile.theme);
+  // Use custom theme if active, otherwise use preset theme
+  const activeCustomTheme = profile.customThemes?.[0];
+  const theme = activeCustomTheme
+    ? createCustomTheme(activeCustomTheme)
+    : getTheme(profile.theme);
 
   return (
     <div style={{
@@ -195,6 +221,21 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             </p>
           </div>
 
+          {/* Achievement Badges */}
+          {profile.achievements && profile.achievements.length > 0 && (
+            <AchievementBadges
+              achievements={profile.achievements.map((ua) => ({
+                id: ua.achievement.id,
+                name: ua.achievement.name,
+                description: ua.achievement.description,
+                icon: ua.achievement.icon,
+                category: ua.achievement.category,
+                unlockedAt: ua.unlockedAt,
+              }))}
+              theme={theme}
+            />
+          )}
+
           {/* Bio */}
           {profile.bio && (
             <p style={{
@@ -218,6 +259,46 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
           {/* Links */}
           <ProfileLinks links={profile.links} theme={theme} />
+
+          {/* Donation Button */}
+          {profile.donationUrl && (
+            <div style={{ marginBottom: "20px" }}>
+              <a
+                href={profile.donationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  width: "100%",
+                  padding: "14px 20px",
+                  background: `linear-gradient(135deg, #f59e0b, #ef4444)`,
+                  borderRadius: "12px",
+                  color: "#fff",
+                  fontSize: "15px",
+                  fontWeight: "600",
+                  textDecoration: "none",
+                  boxShadow: "0 4px 15px rgba(245, 158, 11, 0.3)",
+                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 6px 20px rgba(245, 158, 11, 0.4)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 4px 15px rgba(245, 158, 11, 0.3)";
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+                Support Me
+              </a>
+            </div>
+          )}
 
           {/* Report Button */}
           <div style={{ display: "flex", justifyContent: "center" }}>
