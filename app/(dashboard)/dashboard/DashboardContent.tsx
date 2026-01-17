@@ -386,11 +386,8 @@ export default function DashboardContent() {
                         color: "#d1d5db",
                         textDecoration: "none",
                         fontSize: "14px",
-                        borderRadius: "8px",
-                        transition: "background-color 0.15s"
+                        borderRadius: "8px"
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(55, 65, 81, 0.5)"}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M18 20V10M12 20V4M6 20v-6" />
@@ -408,11 +405,8 @@ export default function DashboardContent() {
                         color: "#d1d5db",
                         textDecoration: "none",
                         fontSize: "14px",
-                        borderRadius: "8px",
-                        transition: "background-color 0.15s"
+                        borderRadius: "8px"
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(55, 65, 81, 0.5)"}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="3" />
@@ -431,11 +425,8 @@ export default function DashboardContent() {
                         color: "#d1d5db",
                         textDecoration: "none",
                         fontSize: "14px",
-                        borderRadius: "8px",
-                        transition: "background-color 0.15s"
+                        borderRadius: "8px"
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(55, 65, 81, 0.5)"}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
@@ -458,11 +449,8 @@ export default function DashboardContent() {
                         borderRadius: "8px",
                         cursor: "pointer",
                         width: "100%",
-                        textAlign: "left",
-                        transition: "background-color 0.15s"
+                        textAlign: "left"
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)"}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
