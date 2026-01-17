@@ -9,8 +9,9 @@ interface Achievement {
   icon: string;
   category: string;
   requirement: number;
-  unlocked: boolean;
+  isUnlocked: boolean;
   unlockedAt: string | null;
+  displayOnProfile: boolean;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -35,6 +36,7 @@ export default function AchievementsSection() {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [toggling, setToggling] = useState<string | null>(null);
   const [newlyUnlocked, setNewlyUnlocked] = useState<string[]>([]);
   const [filter, setFilter] = useState<string>("all");
 
@@ -47,12 +49,37 @@ export default function AchievementsSection() {
       const res = await fetch("/api/user/achievements");
       if (res.ok) {
         const data = await res.json();
-        setAchievements(data.allAchievements || []);
+        setAchievements(data.all || []);
       }
     } catch (error) {
       console.error("Failed to fetch achievements:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleDisplay = async (achievementId: string, currentValue: boolean) => {
+    setToggling(achievementId);
+    try {
+      const res = await fetch("/api/user/achievements", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          achievementId,
+          displayOnProfile: !currentValue,
+        }),
+      });
+      if (res.ok) {
+        setAchievements(
+          achievements.map((a) =>
+            a.id === achievementId ? { ...a, displayOnProfile: !currentValue } : a
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to toggle achievement display:", error);
+    } finally {
+      setToggling(null);
     }
   };
 
@@ -75,7 +102,8 @@ export default function AchievementsSection() {
     }
   };
 
-  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+  const unlockedCount = achievements.filter((a) => a.isUnlocked).length;
+  const displayedCount = achievements.filter((a) => a.isUnlocked && a.displayOnProfile).length;
   const totalCount = achievements.length;
   const categories = ["all", ...new Set(achievements.map((a) => a.category))];
 
@@ -130,7 +158,7 @@ export default function AchievementsSection() {
             Achievements
           </h3>
           <p style={{ color: "#9ca3af", fontSize: "14px" }}>
-            {unlockedCount} of {totalCount} unlocked
+            {unlockedCount} of {totalCount} unlocked • {displayedCount} displayed on profile
           </p>
         </div>
         <button
@@ -239,14 +267,14 @@ export default function AchievementsSection() {
             key={achievement.id}
             style={{
               padding: "16px",
-              backgroundColor: achievement.unlocked
+              backgroundColor: achievement.isUnlocked
                 ? "rgba(31, 41, 55, 0.7)"
                 : "rgba(31, 41, 55, 0.3)",
-              border: achievement.unlocked
+              border: achievement.isUnlocked
                 ? `1px solid ${categoryColors[achievement.category] || "#374151"}40`
                 : "1px solid rgba(55, 65, 81, 0.5)",
               borderRadius: "12px",
-              opacity: achievement.unlocked ? 1 : 0.5,
+              opacity: achievement.isUnlocked ? 1 : 0.5,
               transition: "all 0.3s ease",
             }}
           >
@@ -262,7 +290,7 @@ export default function AchievementsSection() {
                 style={{
                   width: "44px",
                   height: "44px",
-                  backgroundColor: achievement.unlocked
+                  backgroundColor: achievement.isUnlocked
                     ? `${categoryColors[achievement.category]}20`
                     : "rgba(55, 65, 81, 0.5)",
                   borderRadius: "10px",
@@ -270,7 +298,7 @@ export default function AchievementsSection() {
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: "24px",
-                  filter: achievement.unlocked ? "none" : "grayscale(100%)",
+                  filter: achievement.isUnlocked ? "none" : "grayscale(100%)",
                 }}
               >
                 {achievement.icon}
@@ -280,7 +308,7 @@ export default function AchievementsSection() {
                   style={{
                     fontWeight: "600",
                     fontSize: "14px",
-                    color: achievement.unlocked ? "#fff" : "#9ca3af",
+                    color: achievement.isUnlocked ? "#fff" : "#9ca3af",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
@@ -309,16 +337,60 @@ export default function AchievementsSection() {
             >
               {achievement.description}
             </p>
-            {achievement.unlocked && achievement.unlockedAt && (
-              <p
+            {achievement.isUnlocked && (
+              <div
                 style={{
-                  fontSize: "11px",
-                  color: "#6b7280",
-                  marginTop: "8px",
+                  marginTop: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "8px",
                 }}
               >
-                Unlocked {new Date(achievement.unlockedAt).toLocaleDateString()}
-              </p>
+                {achievement.unlockedAt && (
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: "#6b7280",
+                    }}
+                  >
+                    Unlocked {new Date(achievement.unlockedAt).toLocaleDateString()}
+                  </p>
+                )}
+                <button
+                  onClick={() => toggleDisplay(achievement.id, achievement.displayOnProfile)}
+                  disabled={toggling === achievement.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "4px 10px",
+                    backgroundColor: achievement.displayOnProfile
+                      ? "rgba(34, 197, 94, 0.2)"
+                      : "rgba(107, 114, 128, 0.2)",
+                    border: achievement.displayOnProfile
+                      ? "1px solid rgba(34, 197, 94, 0.4)"
+                      : "1px solid rgba(107, 114, 128, 0.4)",
+                    borderRadius: "6px",
+                    color: achievement.displayOnProfile ? "#4ade80" : "#9ca3af",
+                    fontSize: "11px",
+                    cursor: toggling === achievement.id ? "not-allowed" : "pointer",
+                    opacity: toggling === achievement.id ? 0.7 : 1,
+                    marginLeft: "auto",
+                    flexShrink: 0,
+                  }}
+                >
+                  {toggling === achievement.id ? (
+                    "..."
+                  ) : achievement.displayOnProfile ? (
+                    <>
+                      <span style={{ fontSize: "10px" }}>✓</span> Shown
+                    </>
+                  ) : (
+                    "Hidden"
+                  )}
+                </button>
+              </div>
             )}
           </div>
         ))}

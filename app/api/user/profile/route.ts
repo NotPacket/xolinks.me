@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { THEMES } from "@/lib/themes/config";
+import { getFont } from "@/lib/fonts/config";
 
 // GET - Get current user profile
 export async function GET() {
@@ -23,6 +24,11 @@ export async function GET() {
         location: true,
         theme: true,
         donationUrl: true,
+        profileFont: true,
+        headingFont: true,
+        facebookPixelId: true,
+        googleAnalyticsId: true,
+        tiktokPixelId: true,
         subscriptionTier: true,
         lastUsernameChange: true,
       },
@@ -64,11 +70,54 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { displayName, bio, location, theme, username, donationUrl } = body;
+    const { displayName, bio, location, theme, username, donationUrl, profileFont, headingFont, facebookPixelId, googleAnalyticsId, tiktokPixelId } = body;
+
+    // Get current user to check subscription tier for Pro features
+    const currentUserForPro = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { subscriptionTier: true },
+    });
+
+    const isPro = currentUserForPro?.subscriptionTier === "pro" || currentUserForPro?.subscriptionTier === "business";
+
+    // Validate fonts (Pro feature)
+    if (profileFont !== undefined || headingFont !== undefined) {
+      if (!isPro) {
+        return NextResponse.json({ error: "Custom fonts are a Pro feature" }, { status: 403 });
+      }
+
+      if (profileFont && !getFont(profileFont)) {
+        return NextResponse.json({ error: "Invalid profile font" }, { status: 400 });
+      }
+      if (headingFont && !getFont(headingFont)) {
+        return NextResponse.json({ error: "Invalid heading font" }, { status: 400 });
+      }
+    }
 
     // Validate theme
     if (theme && !THEMES[theme]) {
       return NextResponse.json({ error: "Invalid theme" }, { status: 400 });
+    }
+
+    // Check if theme is Pro-only
+    if (theme && THEMES[theme]?.proOnly && !isPro) {
+      return NextResponse.json({ error: "This theme requires a Pro subscription" }, { status: 403 });
+    }
+
+    // Validate pixel IDs (Pro feature)
+    if ((facebookPixelId !== undefined || googleAnalyticsId !== undefined || tiktokPixelId !== undefined) && !isPro) {
+      return NextResponse.json({ error: "Analytics pixels are a Pro feature" }, { status: 403 });
+    }
+
+    // Validate pixel ID formats
+    if (facebookPixelId && !/^[0-9]{10,20}$/.test(facebookPixelId)) {
+      return NextResponse.json({ error: "Invalid Facebook Pixel ID format" }, { status: 400 });
+    }
+    if (googleAnalyticsId && !/^(G|UA)-[A-Z0-9-]+$/i.test(googleAnalyticsId)) {
+      return NextResponse.json({ error: "Invalid Google Analytics ID format" }, { status: 400 });
+    }
+    if (tiktokPixelId && !/^[A-Z0-9]{10,30}$/i.test(tiktokPixelId)) {
+      return NextResponse.json({ error: "Invalid TikTok Pixel ID format" }, { status: 400 });
     }
 
     // Validate lengths
@@ -153,6 +202,11 @@ export async function PUT(request: NextRequest) {
         ...(location !== undefined && { location }),
         ...(theme !== undefined && { theme }),
         ...(donationUrl !== undefined && { donationUrl: donationUrl || null }),
+        ...(profileFont !== undefined && isPro && { profileFont: profileFont || null }),
+        ...(headingFont !== undefined && isPro && { headingFont: headingFont || null }),
+        ...(facebookPixelId !== undefined && isPro && { facebookPixelId: facebookPixelId || null }),
+        ...(googleAnalyticsId !== undefined && isPro && { googleAnalyticsId: googleAnalyticsId || null }),
+        ...(tiktokPixelId !== undefined && isPro && { tiktokPixelId: tiktokPixelId || null }),
         ...usernameUpdate,
       },
       select: {
@@ -165,6 +219,11 @@ export async function PUT(request: NextRequest) {
         location: true,
         theme: true,
         donationUrl: true,
+        profileFont: true,
+        headingFont: true,
+        facebookPixelId: true,
+        googleAnalyticsId: true,
+        tiktokPixelId: true,
         subscriptionTier: true,
         lastUsernameChange: true,
       },

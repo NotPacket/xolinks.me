@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AchievementsSection from "@/components/AchievementsSection";
+import QRCodeCard from "@/components/QRCodeCard";
+import ABTestManager from "@/components/ABTestManager";
 
 interface UserData {
   id: string;
@@ -45,6 +47,7 @@ interface AvailablePlatform {
   name: string;
   color: string;
   oauthSupported: boolean;
+  proOnly?: boolean;
 }
 
 const cardStyle = {
@@ -57,6 +60,8 @@ const cardStyle = {
 
 // Platform icons mapping
 const platformIcons: Record<string, string> = {
+  onlyfans: "M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm0-14c-3.309 0-6 2.691-6 6s2.691 6 6 6 6-2.691 6-6-2.691-6-6-6zm0 10c-2.206 0-4-1.794-4-4s1.794-4 4-4 4 1.794 4 4-1.794 4-4 4z",
+  fansly: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z",
   github: "M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12",
   discord: "M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z",
   twitch: "M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z",
@@ -75,9 +80,14 @@ export default function DashboardContent() {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [connections, setConnections] = useState<PlatformConnection[]>([]);
   const [availablePlatforms, setAvailablePlatforms] = useState<AvailablePlatform[]>([]);
+  const [isPro, setIsPro] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [showAddLink, setShowAddLink] = useState(false);
+  const [newLink, setNewLink] = useState({ title: "", url: "", platform: "" });
+  const [addingLink, setAddingLink] = useState(false);
+  const [abTestLink, setAbTestLink] = useState<LinkData | null>(null);
 
   const fetchLinks = useCallback(async () => {
     const res = await fetch("/api/user/links");
@@ -93,6 +103,7 @@ export default function DashboardContent() {
       const data = await res.json();
       setConnections(data.connections);
       setAvailablePlatforms(data.availablePlatforms);
+      setIsPro(data.isPro || false);
     }
   }, []);
 
@@ -211,6 +222,34 @@ export default function DashboardContent() {
     }
   };
 
+  const handleAddCustomLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLink.title || !newLink.url) return;
+
+    setAddingLink(true);
+    try {
+      const res = await fetch("/api/user/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newLink),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setMessage({ type: "success", text: "Link added successfully!" });
+        setNewLink({ title: "", url: "", platform: "" });
+        setShowAddLink(false);
+        await fetchLinks();
+      } else {
+        setMessage({ type: "error", text: data.error || "Failed to add link" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Something went wrong" });
+    } finally {
+      setAddingLink(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -257,8 +296,10 @@ export default function DashboardContent() {
             {user?.role === "admin" && (
               <Link href="/xo-backstage" style={{ color: "#f87171", textDecoration: "none", fontSize: "14px" }}>Control Panel</Link>
             )}
+            <Link href="/messages" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Messages</Link>
             <Link href="/settings" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Settings</Link>
             <Link href="/analytics" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Analytics</Link>
+            <Link href="/support" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Support</Link>
             <Link href={`/@${user?.username}`} target="_blank" style={{ color: "#a855f7", textDecoration: "none", fontSize: "14px" }}>View Profile</Link>
             <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "14px" }}>Logout</button>
           </div>
@@ -382,6 +423,9 @@ export default function DashboardContent() {
           </div>
         </div>
 
+        {/* QR Code Sharing */}
+        {user && <QRCodeCard username={user.username} displayName={user.displayName} />}
+
         {/* Connect Platforms */}
         <div style={cardStyle}>
           <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px" }}>Connect Your Accounts</h3>
@@ -396,10 +440,100 @@ export default function DashboardContent() {
           }}>
             {availablePlatforms.map((platform) => {
               const iconPath = platformIcons[platform.id.toLowerCase()];
+              const isLocked = platform.proOnly && !isPro;
+
+              const cardContent = (
+                <>
+                  <div style={{
+                    width: "40px",
+                    height: "40px",
+                    backgroundColor: isLocked ? "#374151" : platform.color,
+                    borderRadius: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    position: "relative"
+                  }}>
+                    {iconPath ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" style={{ opacity: isLocked ? 0.5 : 1 }}>
+                        <path d={iconPath} />
+                      </svg>
+                    ) : (
+                      <span style={{ fontWeight: "bold", fontSize: "16px", opacity: isLocked ? 0.5 : 1 }}>{platform.name[0]}</span>
+                    )}
+                    {isLocked && (
+                      <div style={{
+                        position: "absolute",
+                        bottom: "-4px",
+                        right: "-4px",
+                        width: "18px",
+                        height: "18px",
+                        backgroundColor: "#1f2937",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
+                      }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="#9ca3af">
+                          <path d="M12 1C8.676 1 6 3.676 6 7v2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V11c0-1.1-.9-2-2-2h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v2H8V7c0-2.276 1.724-4 4-4zm0 10c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <p style={{ fontWeight: "500", fontSize: "14px", opacity: isLocked ? 0.6 : 1 }}>{platform.name}</p>
+                      {platform.proOnly && (
+                        <span style={{
+                          padding: "2px 6px",
+                          backgroundColor: "rgba(168, 85, 247, 0.2)",
+                          color: "#a855f7",
+                          fontSize: "10px",
+                          fontWeight: "600",
+                          borderRadius: "4px",
+                          textTransform: "uppercase"
+                        }}>Pro</span>
+                      )}
+                    </div>
+                    <p style={{ color: "#6b7280", fontSize: "12px" }}>
+                      {isLocked ? "Upgrade to Pro" : "Connect"}
+                    </p>
+                  </div>
+                </>
+              );
+
+              if (isLocked) {
+                return (
+                  <Link
+                    key={platform.id}
+                    href="/upgrade"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      padding: "14px",
+                      backgroundColor: "rgba(31, 41, 55, 0.3)",
+                      border: "1px solid #374151",
+                      borderRadius: "12px",
+                      textDecoration: "none",
+                      color: "#fff",
+                      transition: "border-color 0.2s",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {cardContent}
+                  </Link>
+                );
+              }
+
               return (
                 <a
                   key={platform.id}
-                  href={`/api/platforms/connect/${platform.id}`}
+                  href={platform.oauthSupported ? `/api/platforms/connect/${platform.id}` : undefined}
+                  onClick={!platform.oauthSupported ? (e) => {
+                    e.preventDefault();
+                    setMessage({ type: "error", text: `${platform.name} doesn't support OAuth. Add manually in Settings.` });
+                  } : undefined}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -414,27 +548,7 @@ export default function DashboardContent() {
                     cursor: "pointer"
                   }}
                 >
-                  <div style={{
-                    width: "40px",
-                    height: "40px",
-                    backgroundColor: platform.color,
-                    borderRadius: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}>
-                    {iconPath ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
-                        <path d={iconPath} />
-                      </svg>
-                    ) : (
-                      <span style={{ fontWeight: "bold", fontSize: "16px" }}>{platform.name[0]}</span>
-                    )}
-                  </div>
-                  <div>
-                    <p style={{ fontWeight: "500", fontSize: "14px" }}>{platform.name}</p>
-                    <p style={{ color: "#6b7280", fontSize: "12px" }}>Connect</p>
-                  </div>
+                  {cardContent}
                 </a>
               );
             })}
@@ -516,6 +630,117 @@ export default function DashboardContent() {
           </div>
         )}
 
+        {/* Add Custom Link - Pro Feature */}
+        {isPro && (
+          <div style={cardStyle}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: showAddLink ? "16px" : "0" }}>
+              <div>
+                <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "4px" }}>Add Custom Link</h3>
+                <p style={{ color: "#9ca3af", fontSize: "14px" }}>
+                  Add links to platforms like OnlyFans, Fansly, or any custom URL
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddLink(!showAddLink)}
+                style={{
+                  padding: "8px 16px",
+                  background: showAddLink ? "rgba(107, 114, 128, 0.2)" : "linear-gradient(to right, #9333ea, #3b82f6)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "#fff",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: "pointer"
+                }}
+              >
+                {showAddLink ? "Cancel" : "+ Add Link"}
+              </button>
+            </div>
+
+            {showAddLink && (
+              <form onSubmit={handleAddCustomLink} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "14px", color: "#9ca3af", marginBottom: "6px" }}>Platform</label>
+                  <select
+                    value={newLink.platform}
+                    onChange={(e) => setNewLink({ ...newLink, platform: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      backgroundColor: "rgba(31, 41, 55, 0.8)",
+                      border: "1px solid #374151",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontSize: "14px"
+                    }}
+                  >
+                    <option value="">Custom / Other</option>
+                    <option value="onlyfans">OnlyFans</option>
+                    <option value="fansly">Fansly</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "14px", color: "#9ca3af", marginBottom: "6px" }}>Title</label>
+                  <input
+                    type="text"
+                    value={newLink.title}
+                    onChange={(e) => setNewLink({ ...newLink, title: e.target.value })}
+                    placeholder="My OnlyFans"
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      backgroundColor: "rgba(31, 41, 55, 0.8)",
+                      border: "1px solid #374151",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontSize: "14px",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "14px", color: "#9ca3af", marginBottom: "6px" }}>URL</label>
+                  <input
+                    type="url"
+                    value={newLink.url}
+                    onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
+                    placeholder="https://onlyfans.com/yourname"
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      backgroundColor: "rgba(31, 41, 55, 0.8)",
+                      border: "1px solid #374151",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontSize: "14px",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={addingLink}
+                  style={{
+                    padding: "12px",
+                    background: "linear-gradient(to right, #9333ea, #3b82f6)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: addingLink ? "not-allowed" : "pointer",
+                    opacity: addingLink ? 0.7 : 1
+                  }}
+                >
+                  {addingLink ? "Adding..." : "Add Link"}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
         {/* Your Links */}
         <div style={cardStyle}>
           <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>Your Links</h3>
@@ -559,6 +784,22 @@ export default function DashboardContent() {
                       </p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "16px" }}>
+                      {isPro && (
+                        <button
+                          onClick={() => setAbTestLink(link)}
+                          style={{
+                            padding: "6px 12px",
+                            backgroundColor: "rgba(168, 85, 247, 0.2)",
+                            color: "#c084fc",
+                            border: "none",
+                            borderRadius: "50px",
+                            fontSize: "12px",
+                            cursor: "pointer"
+                          }}
+                        >
+                          A/B Test
+                        </button>
+                      )}
                       <button
                         onClick={() => handleToggleActive(link)}
                         style={{
@@ -596,6 +837,16 @@ export default function DashboardContent() {
         {/* Achievements */}
         <AchievementsSection />
       </main>
+
+      {/* A/B Test Manager Modal */}
+      {abTestLink && (
+        <ABTestManager
+          linkId={abTestLink.id}
+          linkTitle={abTestLink.title}
+          linkUrl={abTestLink.url}
+          onClose={() => setAbTestLink(null)}
+        />
+      )}
     </div>
   );
 }

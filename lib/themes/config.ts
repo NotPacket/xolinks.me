@@ -11,6 +11,7 @@ export interface Theme {
   textPrimary: string;
   textSecondary: string;
   accent: string;
+  proOnly?: boolean; // Requires Pro subscription
 }
 
 export const THEMES: Record<string, Theme> = {
@@ -117,6 +118,77 @@ export const THEMES: Record<string, Theme> = {
     textPrimary: "#ffffff",
     textSecondary: "#fda4af",
     accent: "#fb7185",
+  },
+  // Pro-only animated themes
+  aurora: {
+    id: "aurora",
+    name: "Aurora",
+    preview: "linear-gradient(to bottom right, #0c0a20, #1a0a2e, #0d1b2a)",
+    background: "linear-gradient(to bottom right, #0c0a20, #1a0a2e, #0d1b2a)",
+    cardBg: "rgba(26, 10, 46, 0.5)",
+    cardBorder: "rgba(139, 92, 246, 0.3)",
+    cardHoverBg: "rgba(26, 10, 46, 0.7)",
+    cardHoverBorder: "rgba(34, 211, 238, 0.5)",
+    textPrimary: "#ffffff",
+    textSecondary: "#c4b5fd",
+    accent: "#22d3ee",
+    proOnly: true,
+  },
+  matrix: {
+    id: "matrix",
+    name: "Matrix",
+    preview: "linear-gradient(to bottom, #000000, #001a00, #000000)",
+    background: "#000000",
+    cardBg: "rgba(0, 26, 0, 0.5)",
+    cardBorder: "rgba(34, 197, 94, 0.3)",
+    cardHoverBg: "rgba(0, 26, 0, 0.7)",
+    cardHoverBorder: "rgba(34, 197, 94, 0.5)",
+    textPrimary: "#22c55e",
+    textSecondary: "#4ade80",
+    accent: "#22c55e",
+    proOnly: true,
+  },
+  neon: {
+    id: "neon",
+    name: "Neon City",
+    preview: "linear-gradient(to bottom right, #0a0a1a, #1a0a2e, #0a1a2a)",
+    background: "linear-gradient(to bottom right, #0a0a1a, #1a0a2e, #0a1a2a)",
+    cardBg: "rgba(20, 10, 40, 0.6)",
+    cardBorder: "rgba(236, 72, 153, 0.4)",
+    cardHoverBg: "rgba(20, 10, 40, 0.8)",
+    cardHoverBorder: "rgba(14, 165, 233, 0.6)",
+    textPrimary: "#ffffff",
+    textSecondary: "#f9a8d4",
+    accent: "#ec4899",
+    proOnly: true,
+  },
+  galaxy: {
+    id: "galaxy",
+    name: "Galaxy",
+    preview: "linear-gradient(to bottom right, #0f0f23, #1a1a3e, #2d1b69)",
+    background: "linear-gradient(to bottom right, #0f0f23, #1a1a3e, #2d1b69)",
+    cardBg: "rgba(26, 26, 62, 0.5)",
+    cardBorder: "rgba(147, 51, 234, 0.4)",
+    cardHoverBg: "rgba(26, 26, 62, 0.7)",
+    cardHoverBorder: "rgba(236, 72, 153, 0.5)",
+    textPrimary: "#ffffff",
+    textSecondary: "#d8b4fe",
+    accent: "#c084fc",
+    proOnly: true,
+  },
+  plasma: {
+    id: "plasma",
+    name: "Plasma",
+    preview: "linear-gradient(to bottom right, #1a0a2e, #2e1065, #4c1d95)",
+    background: "linear-gradient(to bottom right, #1a0a2e, #2e1065, #4c1d95)",
+    cardBg: "rgba(46, 16, 101, 0.4)",
+    cardBorder: "rgba(168, 85, 247, 0.4)",
+    cardHoverBg: "rgba(46, 16, 101, 0.6)",
+    cardHoverBorder: "rgba(192, 132, 252, 0.6)",
+    textPrimary: "#ffffff",
+    textSecondary: "#e9d5ff",
+    accent: "#a855f7",
+    proOnly: true,
   },
 };
 

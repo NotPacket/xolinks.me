@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthBackground from "@/components/AuthBackground";
@@ -13,6 +13,47 @@ export default function LoginPage() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Check if already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          router.push("/dashboard");
+          return;
+        }
+      } catch {
+        // Not logged in, continue
+      }
+      setCheckingAuth(false);
+    };
+    checkAuth();
+  }, [router]);
+
+  if (checkingAuth) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "linear-gradient(to bottom right, #581c87, #1e3a8a, #030712)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#fff"
+      }}>
+        <div style={{
+          width: "32px",
+          height: "32px",
+          border: "3px solid #374151",
+          borderTop: "3px solid #a855f7",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite"
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,9 +139,9 @@ export default function LoginPage() {
           marginBottom: "32px"
         }}>Sign in to your account</p>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-label="Login form">
           <div style={{ marginBottom: "20px" }}>
-            <label style={{
+            <label htmlFor="email" style={{
               display: "block",
               fontSize: "14px",
               fontWeight: "500",
@@ -110,11 +151,15 @@ export default function LoginPage() {
               Email
             </label>
             <input
+              id="email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="you@example.com"
               required
+              autoComplete="email"
+              aria-required="true"
+              aria-describedby={error ? "login-error" : undefined}
               style={{
                 width: "100%",
                 padding: "14px 16px",
@@ -130,7 +175,7 @@ export default function LoginPage() {
           </div>
 
           <div style={{ marginBottom: "16px" }}>
-            <label style={{
+            <label htmlFor="password" style={{
               display: "block",
               fontSize: "14px",
               fontWeight: "500",
@@ -140,11 +185,15 @@ export default function LoginPage() {
               Password
             </label>
             <input
+              id="password"
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="••••••••"
               required
+              autoComplete="current-password"
+              aria-required="true"
+              aria-describedby={error ? "login-error" : undefined}
               style={{
                 width: "100%",
                 padding: "14px 16px",
@@ -170,15 +219,20 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div style={{
-              padding: "12px 16px",
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              borderRadius: "12px",
-              color: "#f87171",
-              fontSize: "14px",
-              marginBottom: "20px"
-            }}>
+            <div
+              id="login-error"
+              role="alert"
+              aria-live="polite"
+              style={{
+                padding: "12px 16px",
+                backgroundColor: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                borderRadius: "12px",
+                color: "#f87171",
+                fontSize: "14px",
+                marginBottom: "20px"
+              }}
+            >
               {error}
             </div>
           )}
@@ -186,6 +240,8 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
+            aria-busy={loading}
+            aria-disabled={loading}
             style={{
               width: "100%",
               padding: "14px",

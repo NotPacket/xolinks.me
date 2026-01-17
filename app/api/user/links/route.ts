@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { createLinkSchema, reorderLinksSchema } from "@/lib/validation/schemas";
+import { getPlatformConfig } from "@/lib/platforms/config";
 
 // GET - Fetch all links for current user
 export async function GET() {
@@ -50,6 +51,25 @@ export async function POST(request: NextRequest) {
         { error: result.error.issues[0].message },
         { status: 400 }
       );
+    }
+
+    // Check if platform is Pro-only
+    if (result.data.platform) {
+      const platformConfig = getPlatformConfig(result.data.platform);
+      if (platformConfig?.proOnly) {
+        const user = await prisma.user.findUnique({
+          where: { id: session.userId },
+          select: { subscriptionTier: true },
+        });
+
+        const isPro = user?.subscriptionTier === "pro" || user?.subscriptionTier === "business";
+        if (!isPro) {
+          return NextResponse.json(
+            { error: `${platformConfig.name} links require a Pro subscription` },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     // Get current max display order

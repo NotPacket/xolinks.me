@@ -1,8 +1,18 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import LandingBackground from "@/components/LandingBackground";
 import FeaturedProfiles from "@/components/FeaturedProfiles";
 
-export default function Home() {
+export default async function Home() {
+  // Check if user is logged in
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("session");
+  const isLoggedIn = !!sessionToken;
+
+  // Determine where auth buttons should go
+  const authLink = isLoggedIn ? "/dashboard" : "/login";
+  const getStartedLink = isLoggedIn ? "/dashboard" : "/register";
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#030712", color: "#fff", position: "relative", overflow: "hidden" }}>
       <LandingBackground />
@@ -29,10 +39,10 @@ export default function Home() {
           xolinks.me
         </Link>
         <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-          <Link href="/login" style={{ color: "#9ca3af", textDecoration: "none" }}>
-            Sign In
+          <Link href={authLink} style={{ color: "#9ca3af", textDecoration: "none" }}>
+            {isLoggedIn ? "Dashboard" : "Sign In"}
           </Link>
-          <Link href="/register" style={{
+          <Link href={getStartedLink} style={{
             padding: "8px 16px",
             background: "linear-gradient(to right, #9333ea, #3b82f6)",
             borderRadius: "8px",
@@ -40,7 +50,7 @@ export default function Home() {
             textDecoration: "none",
             fontWeight: "500"
           }}>
-            Get Started
+            {isLoggedIn ? "Go to Dashboard" : "Get Started"}
           </Link>
         </div>
       </nav>
@@ -109,7 +119,7 @@ export default function Home() {
           flexWrap: "wrap",
           marginBottom: "48px"
         }}>
-          <Link href="/register" style={{
+          <Link href={getStartedLink} style={{
             padding: "14px 28px",
             background: "linear-gradient(to right, #9333ea, #3b82f6)",
             borderRadius: "12px",
@@ -119,7 +129,7 @@ export default function Home() {
             fontSize: "16px",
             boxShadow: "0 10px 40px rgba(147, 51, 234, 0.3)"
           }}>
-            Create Your Page →
+            {isLoggedIn ? "Go to Dashboard →" : "Create Your Page →"}
           </Link>
           <Link href="#features" style={{
             padding: "14px 28px",
@@ -412,12 +422,14 @@ export default function Home() {
           textAlign: "center"
         }}>
           <h2 style={{ fontSize: "28px", fontWeight: "bold", marginBottom: "16px" }}>
-            Ready to Create Your Page?
+            {isLoggedIn ? "Welcome Back!" : "Ready to Create Your Page?"}
           </h2>
           <p style={{ color: "#d1d5db", marginBottom: "32px", maxWidth: "500px", margin: "0 auto 32px" }}>
-            Join thousands of creators who trust xolinks.me for their verified link page. It&apos;s free, fast, and secure.
+            {isLoggedIn
+              ? "Head to your dashboard to manage your links, customize your profile, and view analytics."
+              : "Join thousands of creators who trust xolinks.me for their verified link page. It's free, fast, and secure."}
           </p>
-          <Link href="/register" style={{
+          <Link href={getStartedLink} style={{
             display: "inline-block",
             padding: "14px 32px",
             backgroundColor: "#fff",
@@ -427,7 +439,7 @@ export default function Home() {
             fontWeight: "600",
             fontSize: "16px"
           }}>
-            Get Started Free →
+            {isLoggedIn ? "Go to Dashboard →" : "Get Started Free →"}
           </Link>
         </div>
       </section>
@@ -454,8 +466,14 @@ export default function Home() {
           xolinks.me
         </span>
         <div style={{ display: "flex", gap: "24px" }}>
-          <Link href="/login" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Sign In</Link>
-          <Link href="/register" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Sign Up</Link>
+          {isLoggedIn ? (
+            <Link href="/dashboard" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Dashboard</Link>
+          ) : (
+            <>
+              <Link href="/login" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Sign In</Link>
+              <Link href="/register" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Sign Up</Link>
+            </>
+          )}
           <Link href="/terms" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Terms</Link>
           <Link href="/privacy" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Privacy</Link>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthBackground from "@/components/AuthBackground";
@@ -15,6 +15,47 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Check if already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          router.push("/dashboard");
+          return;
+        }
+      } catch {
+        // Not logged in, continue
+      }
+      setCheckingAuth(false);
+    };
+    checkAuth();
+  }, [router]);
+
+  if (checkingAuth) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "linear-gradient(to bottom right, #581c87, #1e3a8a, #030712)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#fff"
+      }}>
+        <div style={{
+          width: "32px",
+          height: "32px",
+          border: "3px solid #374151",
+          borderTop: "3px solid #a855f7",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite"
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

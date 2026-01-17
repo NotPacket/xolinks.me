@@ -13,6 +13,7 @@ interface User {
   role: string;
   subscriptionTier: string;
   isFeatured: boolean;
+  emailVerified?: boolean;
   totalProfileViews: number;
   createdAt: string;
   lastLoginAt: string | null;
@@ -37,7 +38,17 @@ const inputStyle = {
   borderRadius: "10px",
   color: "#fff",
   fontSize: "14px",
-  outline: "none"
+  outline: "none",
+  width: "100%",
+};
+
+const buttonStyle = {
+  padding: "10px 20px",
+  border: "none",
+  borderRadius: "8px",
+  cursor: "pointer",
+  fontSize: "14px",
+  fontWeight: "500" as const,
 };
 
 export default function AdminUsersPage() {
@@ -49,8 +60,20 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState("");
   const [featuredFilter, setFeaturedFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [editingUser, setEditingUser] = useState<string | null>(null);
   const [togglingFeatured, setTogglingFeatured] = useState<string | null>(null);
+
+  // Modal state
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({
+    email: "",
+    username: "",
+    role: "",
+    newPassword: "",
+    emailVerified: false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fetchUsers = useCallback(
     async (page = 1) => {
@@ -76,7 +99,6 @@ export default function AdminUsersPage() {
         const data = await res.json();
         let filteredUsers = data.users;
 
-        // Client-side featured filter
         if (featuredFilter === "featured") {
           filteredUsers = filteredUsers.filter((u: User) => u.isFeatured);
         } else if (featuredFilter === "not-featured") {
@@ -98,19 +120,6 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleUpdateRole = async (userId: string, newRole: string) => {
-    const res = await fetch("/api/admin/users", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, updates: { role: newRole } }),
-    });
-
-    if (res.ok) {
-      setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
-      setEditingUser(null);
-    }
-  };
-
   const handleToggleFeatured = async (userId: string, currentStatus: boolean) => {
     setTogglingFeatured(userId);
     try {
@@ -127,6 +136,105 @@ export default function AdminUsersPage() {
       }
     } finally {
       setTogglingFeatured(null);
+    }
+  };
+
+  const openEditModal = (user: User) => {
+    setEditingUser(user);
+    setEditForm({
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      newPassword: "",
+      emailVerified: user.emailVerified ?? false,
+    });
+    setMessage(null);
+  };
+
+  const closeModal = () => {
+    setEditingUser(null);
+    setMessage(null);
+  };
+
+  const handleSave = async () => {
+    if (!editingUser) return;
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const updates: Record<string, string | boolean> = {};
+
+      if (editForm.email !== editingUser.email) {
+        updates.email = editForm.email;
+      }
+      if (editForm.username !== editingUser.username) {
+        updates.username = editForm.username;
+      }
+      if (editForm.role !== editingUser.role) {
+        updates.role = editForm.role;
+      }
+      if (editForm.emailVerified !== (editingUser.emailVerified ?? false)) {
+        updates.emailVerified = editForm.emailVerified;
+      }
+      if (editForm.newPassword) {
+        updates.newPassword = editForm.newPassword;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        setMessage({ type: "error", text: "No changes to save" });
+        setSaving(false);
+        return;
+      }
+
+      const res = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: editingUser.id, updates }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(users.map((u) =>
+          u.id === editingUser.id ? { ...u, ...data.user } : u
+        ));
+        setMessage({ type: "success", text: "User updated successfully" });
+        setEditForm({ ...editForm, newPassword: "" });
+        // Update editingUser with new values
+        setEditingUser({ ...editingUser, ...data.user });
+      } else {
+        const data = await res.json();
+        setMessage({ type: "error", text: data.error || "Failed to update user" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Failed to update user" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingUser) return;
+    if (!confirm(`Are you sure you want to DELETE user "${editingUser.username}"? This cannot be undone!`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/users?userId=${editingUser.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setUsers(users.filter((u) => u.id !== editingUser.id));
+        closeModal();
+      } else {
+        const data = await res.json();
+        setMessage({ type: "error", text: data.error || "Failed to delete user" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Failed to delete user" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -235,7 +343,7 @@ export default function AdminUsersPage() {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            style={{ ...inputStyle, minWidth: "120px" }}
+            style={{ ...inputStyle, minWidth: "120px", width: "auto" }}
           >
             <option value="">All Roles</option>
             <option value="user">Users</option>
@@ -244,7 +352,7 @@ export default function AdminUsersPage() {
           <select
             value={featuredFilter}
             onChange={(e) => setFeaturedFilter(e.target.value)}
-            style={{ ...inputStyle, minWidth: "140px" }}
+            style={{ ...inputStyle, minWidth: "140px", width: "auto" }}
           >
             <option value="">All Users</option>
             <option value="featured">Featured Only</option>
@@ -253,13 +361,9 @@ export default function AdminUsersPage() {
           <button
             onClick={() => fetchUsers(1)}
             style={{
-              padding: "10px 24px",
+              ...buttonStyle,
               background: "linear-gradient(135deg, #9333ea, #3b82f6)",
               color: "#fff",
-              border: "none",
-              borderRadius: "10px",
-              cursor: "pointer",
-              fontWeight: "500"
             }}
           >
             Search
@@ -293,7 +397,7 @@ export default function AdminUsersPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead style={{ backgroundColor: "rgba(31, 41, 55, 0.5)" }}>
                     <tr>
-                      {["User", "Role", "Tier", "Views", "Clicks", "Featured", "Actions"].map((header) => (
+                      {["User", "Email", "Role", "Featured", "Actions"].map((header) => (
                         <th
                           key={header}
                           style={{
@@ -358,54 +462,20 @@ export default function AdminUsersPage() {
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: "14px 16px" }}>
-                          {editingUser === user.id ? (
-                            <select
-                              value={user.role}
-                              onChange={(e) => handleUpdateRole(user.id, e.target.value)}
-                              autoFocus
-                              onBlur={() => setEditingUser(null)}
-                              style={{
-                                padding: "6px 10px",
-                                backgroundColor: "#374151",
-                                border: "1px solid #4b5563",
-                                borderRadius: "6px",
-                                color: "#fff",
-                                fontSize: "14px"
-                              }}
-                            >
-                              <option value="user">User</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                          ) : (
-                            <span style={{
-                              padding: "4px 12px",
-                              borderRadius: "50px",
-                              fontSize: "12px",
-                              fontWeight: "500",
-                              backgroundColor: user.role === "admin" ? "rgba(239, 68, 68, 0.2)" : "rgba(75, 85, 99, 0.3)",
-                              color: user.role === "admin" ? "#f87171" : "#d1d5db"
-                            }}>
-                              {user.role}
-                            </span>
-                          )}
+                        <td style={{ padding: "14px 16px", color: "#9ca3af", fontSize: "14px" }}>
+                          {user.email}
                         </td>
                         <td style={{ padding: "14px 16px" }}>
                           <span style={{
-                            padding: "4px 10px",
-                            backgroundColor: user.subscriptionTier === "pro" ? "rgba(168, 85, 247, 0.2)" : "rgba(75, 85, 99, 0.2)",
-                            color: user.subscriptionTier === "pro" ? "#a855f7" : "#9ca3af",
+                            padding: "4px 12px",
                             borderRadius: "50px",
-                            fontSize: "12px"
+                            fontSize: "12px",
+                            fontWeight: "500",
+                            backgroundColor: user.role === "admin" ? "rgba(239, 68, 68, 0.2)" : "rgba(75, 85, 99, 0.3)",
+                            color: user.role === "admin" ? "#f87171" : "#d1d5db"
                           }}>
-                            {user.subscriptionTier}
+                            {user.role}
                           </span>
-                        </td>
-                        <td style={{ padding: "14px 16px", color: "#9ca3af" }}>
-                          {user.totalProfileViews.toLocaleString()}
-                        </td>
-                        <td style={{ padding: "14px 16px", color: "#a855f7", fontWeight: "500" }}>
-                          {user._count.linkClicks.toLocaleString()}
                         </td>
                         <td style={{ padding: "14px 16px" }}>
                           <button
@@ -423,7 +493,6 @@ export default function AdminUsersPage() {
                               display: "flex",
                               alignItems: "center",
                               gap: "6px",
-                              transition: "all 0.2s ease"
                             }}
                           >
                             <svg
@@ -442,18 +511,15 @@ export default function AdminUsersPage() {
                         <td style={{ padding: "14px 16px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <button
-                              onClick={() => setEditingUser(user.id)}
+                              onClick={() => openEditModal(user)}
                               style={{
-                                padding: "6px 12px",
-                                backgroundColor: "rgba(75, 85, 99, 0.3)",
-                                border: "none",
-                                borderRadius: "6px",
-                                color: "#d1d5db",
-                                cursor: "pointer",
-                                fontSize: "13px"
+                                ...buttonStyle,
+                                padding: "6px 16px",
+                                backgroundColor: "rgba(59, 130, 246, 0.2)",
+                                color: "#3b82f6",
                               }}
                             >
-                              Edit
+                              Manage
                             </button>
                             <Link
                               href={`/@${user.username}`}
@@ -461,7 +527,7 @@ export default function AdminUsersPage() {
                               style={{
                                 padding: "6px 12px",
                                 backgroundColor: "rgba(168, 85, 247, 0.2)",
-                                borderRadius: "6px",
+                                borderRadius: "8px",
                                 color: "#a855f7",
                                 textDecoration: "none",
                                 fontSize: "13px"
@@ -502,13 +568,11 @@ export default function AdminUsersPage() {
                       onClick={() => fetchUsers(pagination.page - 1)}
                       disabled={pagination.page === 1}
                       style={{
-                        padding: "8px 14px",
+                        ...buttonStyle,
                         backgroundColor: "#374151",
                         color: "#fff",
-                        border: "none",
-                        borderRadius: "8px",
+                        opacity: pagination.page === 1 ? 0.5 : 1,
                         cursor: pagination.page === 1 ? "not-allowed" : "pointer",
-                        opacity: pagination.page === 1 ? 0.5 : 1
                       }}
                     >
                       Previous
@@ -520,13 +584,11 @@ export default function AdminUsersPage() {
                       onClick={() => fetchUsers(pagination.page + 1)}
                       disabled={pagination.page === pagination.pages}
                       style={{
-                        padding: "8px 14px",
+                        ...buttonStyle,
                         backgroundColor: "#374151",
                         color: "#fff",
-                        border: "none",
-                        borderRadius: "8px",
+                        opacity: pagination.page === pagination.pages ? 0.5 : 1,
                         cursor: pagination.page === pagination.pages ? "not-allowed" : "pointer",
-                        opacity: pagination.page === pagination.pages ? 0.5 : 1
                       }}
                     >
                       Next
@@ -538,6 +600,236 @@ export default function AdminUsersPage() {
           )}
         </div>
       </main>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: "20px",
+          }}
+          onClick={(e) => e.target === e.currentTarget && closeModal()}
+        >
+          <div
+            style={{
+              backgroundColor: "#111827",
+              border: "1px solid #374151",
+              borderRadius: "16px",
+              width: "100%",
+              maxWidth: "500px",
+              maxHeight: "90vh",
+              overflow: "auto",
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: "20px 24px",
+              borderBottom: "1px solid #374151",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}>
+              <div>
+                <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "4px" }}>
+                  Manage User
+                </h2>
+                <p style={{ color: "#9ca3af", fontSize: "14px" }}>
+                  @{editingUser.username}
+                </p>
+              </div>
+              <button
+                onClick={closeModal}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#9ca3af",
+                  cursor: "pointer",
+                  fontSize: "24px",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: "24px" }}>
+              {message && (
+                <div style={{
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  marginBottom: "20px",
+                  backgroundColor: message.type === "success" ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)",
+                  border: `1px solid ${message.type === "success" ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
+                  color: message.type === "success" ? "#4ade80" : "#f87171",
+                  fontSize: "14px",
+                }}>
+                  {message.text}
+                </div>
+              )}
+
+              {/* Username */}
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", marginBottom: "8px", color: "#d1d5db", fontSize: "14px", fontWeight: "500" }}>
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={editForm.username}
+                  onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Email */}
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", marginBottom: "8px", color: "#d1d5db", fontSize: "14px", fontWeight: "500" }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Role */}
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", marginBottom: "8px", color: "#d1d5db", fontSize: "14px", fontWeight: "500" }}>
+                  Role
+                </label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  style={inputStyle}
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+
+              {/* Email Verified Toggle */}
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  cursor: "pointer",
+                }}>
+                  <div
+                    onClick={() => setEditForm({ ...editForm, emailVerified: !editForm.emailVerified })}
+                    style={{
+                      width: "44px",
+                      height: "24px",
+                      backgroundColor: editForm.emailVerified ? "#22c55e" : "#374151",
+                      borderRadius: "12px",
+                      position: "relative",
+                      transition: "background-color 0.2s",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{
+                      width: "20px",
+                      height: "20px",
+                      backgroundColor: "#fff",
+                      borderRadius: "50%",
+                      position: "absolute",
+                      top: "2px",
+                      left: editForm.emailVerified ? "22px" : "2px",
+                      transition: "left 0.2s",
+                    }} />
+                  </div>
+                  <span style={{ color: "#d1d5db", fontSize: "14px", fontWeight: "500" }}>
+                    Email Verified
+                  </span>
+                </label>
+              </div>
+
+              {/* New Password */}
+              <div style={{ marginBottom: "24px" }}>
+                <label style={{ display: "block", marginBottom: "8px", color: "#d1d5db", fontSize: "14px", fontWeight: "500" }}>
+                  New Password (leave blank to keep current)
+                </label>
+                <input
+                  type="text"
+                  value={editForm.newPassword}
+                  onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
+                  placeholder="Enter new password..."
+                  style={inputStyle}
+                />
+                {editForm.newPassword && editForm.newPassword.length < 6 && (
+                  <p style={{ color: "#f87171", fontSize: "12px", marginTop: "6px" }}>
+                    Password must be at least 6 characters
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{
+                    ...buttonStyle,
+                    flex: 1,
+                    background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                    color: "#fff",
+                    opacity: saving ? 0.7 : 1,
+                  }}
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+                <button
+                  onClick={closeModal}
+                  style={{
+                    ...buttonStyle,
+                    backgroundColor: "#374151",
+                    color: "#fff",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {/* Delete Section */}
+              <div style={{
+                marginTop: "24px",
+                paddingTop: "24px",
+                borderTop: "1px solid #374151",
+              }}>
+                <h3 style={{ color: "#f87171", fontSize: "14px", fontWeight: "600", marginBottom: "12px" }}>
+                  Danger Zone
+                </h3>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{
+                    ...buttonStyle,
+                    width: "100%",
+                    backgroundColor: "rgba(239, 68, 68, 0.2)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: "#f87171",
+                    opacity: deleting ? 0.7 : 1,
+                  }}
+                >
+                  {deleting ? "Deleting..." : "Delete User Account"}
+                </button>
+                <p style={{ color: "#6b7280", fontSize: "12px", marginTop: "8px" }}>
+                  This action cannot be undone. All user data will be permanently deleted.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

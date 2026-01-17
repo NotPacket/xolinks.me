@@ -14,6 +14,12 @@ const THEMES = [
   { id: "noir", name: "Noir", gradient: "#000", desc: "Subtle smoke" },
   { id: "lavender", name: "Lavender", gradient: "linear-gradient(to bottom right, #2e1065, #581c87, #701a75)", desc: "Floating petals" },
   { id: "cherry", name: "Cherry", gradient: "linear-gradient(to bottom right, #4c0519, #7f1d1d, #831843)", desc: "Sakura petals" },
+  // Pro-only themes
+  { id: "aurora", name: "Aurora", gradient: "linear-gradient(to bottom right, #0c0a20, #1a0a2e, #0d1b2a)", desc: "Northern lights", proOnly: true },
+  { id: "matrix", name: "Matrix", gradient: "linear-gradient(to bottom, #000000, #001a00, #000000)", desc: "Code rain", proOnly: true },
+  { id: "neon", name: "Neon City", gradient: "linear-gradient(to bottom right, #0a0a1a, #1a0a2e, #0a1a2a)", desc: "Neon glow", proOnly: true },
+  { id: "galaxy", name: "Galaxy", gradient: "linear-gradient(to bottom right, #0f0f23, #1a1a3e, #2d1b69)", desc: "Spiral stars", proOnly: true },
+  { id: "plasma", name: "Plasma", gradient: "linear-gradient(to bottom right, #1a0a2e, #2e1065, #4c1d95)", desc: "Liquid flow", proOnly: true },
 ];
 
 interface UserProfile {
@@ -28,6 +34,9 @@ interface UserProfile {
   donationUrl: string | null;
   lastUsernameChange: string | null;
   subscriptionTier: string;
+  facebookPixelId: string | null;
+  googleAnalyticsId: string | null;
+  tiktokPixelId: string | null;
 }
 
 const cardStyle = {
@@ -74,9 +83,21 @@ export default function SettingsPage() {
     location: "",
     theme: "space",
     donationUrl: "",
+    facebookPixelId: "",
+    googleAnalyticsId: "",
+    tiktokPixelId: "",
   });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -98,6 +119,9 @@ export default function SettingsPage() {
           location: data.user.location || "",
           theme: data.user.theme || "space",
           donationUrl: data.user.donationUrl || "",
+          facebookPixelId: data.user.facebookPixelId || "",
+          googleAnalyticsId: data.user.googleAnalyticsId || "",
+          tiktokPixelId: data.user.tiktokPixelId || "",
         });
       } catch {
         router.push("/login");
@@ -200,6 +224,52 @@ export default function SettingsPage() {
       setMessage({ type: "error", text: "Failed to remove avatar" });
     } finally {
       setUploadingAvatar(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    setPasswordMessage(null);
+
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setPasswordMessage({ type: "error", text: "All fields are required" });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordMessage({ type: "error", text: "New password must be at least 6 characters" });
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordMessage({ type: "error", text: "New passwords do not match" });
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const res = await fetch("/api/user/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPasswordMessage({ type: "error", text: data.error || "Failed to change password" });
+        return;
+      }
+
+      setPasswordMessage({ type: "success", text: "Password changed successfully!" });
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch {
+      setPasswordMessage({ type: "error", text: "Something went wrong" });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -620,6 +690,239 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Analytics Pixels - Pro Feature */}
+        <div style={cardStyle}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+            <div style={{
+              width: "40px",
+              height: "40px",
+              background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+              borderRadius: "10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <h2 style={{ fontSize: "18px", fontWeight: "600" }}>Analytics Pixels</h2>
+                <span style={{
+                  padding: "2px 8px",
+                  backgroundColor: "rgba(168, 85, 247, 0.2)",
+                  color: "#a855f7",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  borderRadius: "4px",
+                  textTransform: "uppercase"
+                }}>Pro</span>
+              </div>
+              <p style={{ color: "#9ca3af", fontSize: "13px" }}>Track visitors with Facebook, Google, or TikTok pixels</p>
+            </div>
+          </div>
+
+          {user?.subscriptionTier === "pro" || user?.subscriptionTier === "business" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div>
+                <label style={labelStyle}>Facebook Pixel ID</label>
+                <input
+                  type="text"
+                  value={formData.facebookPixelId}
+                  onChange={(e) => setFormData({ ...formData, facebookPixelId: e.target.value.replace(/[^0-9]/g, '') })}
+                  placeholder="1234567890123456"
+                  maxLength={20}
+                  style={inputStyle}
+                />
+                <p style={{ marginTop: "6px", fontSize: "12px", color: "#6b7280" }}>
+                  Find this in Facebook Events Manager. Numbers only (10-20 digits).
+                </p>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Google Analytics ID</label>
+                <input
+                  type="text"
+                  value={formData.googleAnalyticsId}
+                  onChange={(e) => setFormData({ ...formData, googleAnalyticsId: e.target.value })}
+                  placeholder="G-XXXXXXXXXX or UA-XXXXXXXXX-X"
+                  maxLength={30}
+                  style={inputStyle}
+                />
+                <p style={{ marginTop: "6px", fontSize: "12px", color: "#6b7280" }}>
+                  Find this in Google Analytics &gt; Admin &gt; Data Streams.
+                </p>
+              </div>
+
+              <div>
+                <label style={labelStyle}>TikTok Pixel ID</label>
+                <input
+                  type="text"
+                  value={formData.tiktokPixelId}
+                  onChange={(e) => setFormData({ ...formData, tiktokPixelId: e.target.value })}
+                  placeholder="XXXXXXXXXXXXXXXXX"
+                  maxLength={30}
+                  style={inputStyle}
+                />
+                <p style={{ marginTop: "6px", fontSize: "12px", color: "#6b7280" }}>
+                  Find this in TikTok Ads Manager &gt; Assets &gt; Events.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              padding: "24px",
+              backgroundColor: "rgba(168, 85, 247, 0.1)",
+              border: "1px solid rgba(168, 85, 247, 0.3)",
+              borderRadius: "12px",
+              textAlign: "center"
+            }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" style={{ margin: "0 auto 12px" }}>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" />
+              </svg>
+              <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "8px" }}>Upgrade to Pro</h3>
+              <p style={{ color: "#9ca3af", fontSize: "14px", marginBottom: "16px" }}>
+                Track your profile visitors with Facebook, Google Analytics, or TikTok pixels.
+              </p>
+              <a
+                href="/upgrade"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px 20px",
+                  background: "linear-gradient(135deg, #9333ea, #3b82f6)",
+                  borderRadius: "8px",
+                  color: "#fff",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  textDecoration: "none"
+                }}
+              >
+                Upgrade Now
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Change Password */}
+        <div style={cardStyle}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+            <div style={{
+              width: "40px",
+              height: "40px",
+              background: "linear-gradient(135deg, #ef4444, #f97316)",
+              borderRadius: "10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" />
+              </svg>
+            </div>
+            <div>
+              <h2 style={{ fontSize: "18px", fontWeight: "600" }}>Change Password</h2>
+              <p style={{ color: "#9ca3af", fontSize: "13px" }}>Update your account password</p>
+            </div>
+          </div>
+
+          {passwordMessage && (
+            <div style={{
+              padding: "12px 16px",
+              borderRadius: "10px",
+              marginBottom: "20px",
+              backgroundColor: passwordMessage.type === "success" ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)",
+              border: `1px solid ${passwordMessage.type === "success" ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
+              color: passwordMessage.type === "success" ? "#4ade80" : "#f87171",
+              fontSize: "14px"
+            }}>
+              {passwordMessage.text}
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div>
+              <label style={labelStyle}>Current Password</label>
+              <input
+                type="password"
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                placeholder="Enter current password"
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>New Password</label>
+              <input
+                type="password"
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                placeholder="Enter new password (min 6 characters)"
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Confirm New Password</label>
+              <input
+                type="password"
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                placeholder="Confirm new password"
+                style={inputStyle}
+              />
+            </div>
+
+            <button
+              onClick={handlePasswordChange}
+              disabled={changingPassword}
+              style={{
+                padding: "12px 20px",
+                background: "linear-gradient(135deg, #ef4444, #f97316)",
+                border: "none",
+                borderRadius: "10px",
+                color: "#fff",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: changingPassword ? "not-allowed" : "pointer",
+                opacity: changingPassword ? 0.7 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                alignSelf: "flex-start"
+              }}
+            >
+              {changingPassword ? (
+                <>
+                  <div style={{
+                    width: "16px",
+                    height: "16px",
+                    border: "2px solid rgba(255,255,255,0.3)",
+                    borderTop: "2px solid #fff",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite"
+                  }} />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                  </svg>
+                  Change Password
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
         {/* Theme Selection */}
         <div style={cardStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
@@ -650,72 +953,112 @@ export default function SettingsPage() {
             gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
             gap: "12px"
           }}>
-            {THEMES.map((theme) => (
-              <button
-                key={theme.id}
-                onClick={() => setFormData({ ...formData, theme: theme.id })}
-                style={{
-                  position: "relative",
-                  padding: "4px",
-                  borderRadius: "14px",
-                  border: formData.theme === theme.id ? "2px solid #a855f7" : "2px solid transparent",
-                  background: "transparent",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  textAlign: "left"
-                }}
-              >
-                <div style={{
-                  height: "70px",
-                  borderRadius: "10px",
-                  background: theme.gradient,
-                  position: "relative",
-                  overflow: "hidden"
-                }}>
-                  {/* Animated preview dots */}
-                  {theme.id === "space" && (
-                    <div style={{ position: "absolute", inset: 0 }}>
-                      {[...Array(8)].map((_, i) => (
-                        <div key={i} style={{
-                          position: "absolute",
-                          width: "2px",
-                          height: "2px",
-                          backgroundColor: "#fff",
-                          borderRadius: "50%",
-                          left: `${10 + i * 12}%`,
-                          top: `${20 + (i % 3) * 25}%`,
-                          animation: `twinkle ${1 + i * 0.2}s ease-in-out infinite`
-                        }} />
-                      ))}
+            {THEMES.map((theme) => {
+              const isPro = user?.subscriptionTier === "pro" || user?.subscriptionTier === "business";
+              const isLocked = theme.proOnly && !isPro;
+
+              return (
+                <button
+                  key={theme.id}
+                  onClick={() => !isLocked && setFormData({ ...formData, theme: theme.id })}
+                  style={{
+                    position: "relative",
+                    padding: "4px",
+                    borderRadius: "14px",
+                    border: formData.theme === theme.id ? "2px solid #a855f7" : "2px solid transparent",
+                    background: "transparent",
+                    cursor: isLocked ? "not-allowed" : "pointer",
+                    transition: "all 0.2s",
+                    textAlign: "left",
+                    opacity: isLocked ? 0.6 : 1
+                  }}
+                >
+                  <div style={{
+                    height: "70px",
+                    borderRadius: "10px",
+                    background: theme.gradient,
+                    position: "relative",
+                    overflow: "hidden"
+                  }}>
+                    {/* Animated preview dots */}
+                    {theme.id === "space" && (
+                      <div style={{ position: "absolute", inset: 0 }}>
+                        {[...Array(8)].map((_, i) => (
+                          <div key={i} style={{
+                            position: "absolute",
+                            width: "2px",
+                            height: "2px",
+                            backgroundColor: "#fff",
+                            borderRadius: "50%",
+                            left: `${10 + i * 12}%`,
+                            top: `${20 + (i % 3) * 25}%`,
+                            animation: `twinkle ${1 + i * 0.2}s ease-in-out infinite`
+                          }} />
+                        ))}
+                      </div>
+                    )}
+                    {/* Pro badge */}
+                    {theme.proOnly && (
+                      <div style={{
+                        position: "absolute",
+                        top: "6px",
+                        left: "6px",
+                        padding: "2px 6px",
+                        backgroundColor: "rgba(168, 85, 247, 0.9)",
+                        borderRadius: "4px",
+                        fontSize: "9px",
+                        fontWeight: "700",
+                        color: "#fff",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px"
+                      }}>
+                        Pro
+                      </div>
+                    )}
+                    {/* Lock icon for non-Pro */}
+                    {isLocked && (
+                      <div style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "rgba(0, 0, 0, 0.4)"
+                      }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0110 0v4" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <p style={{ marginTop: "8px", fontSize: "13px", color: "#d1d5db", fontWeight: "500" }}>{theme.name}</p>
+                  <p style={{ fontSize: "11px", color: "#6b7280" }}>{theme.desc}</p>
+                  {formData.theme === theme.id && (
+                    <div style={{
+                      position: "absolute",
+                      top: "8px",
+                      right: "8px",
+                      width: "20px",
+                      height: "20px",
+                      backgroundColor: "#a855f7",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}>
+                      <svg width="12" height="12" viewBox="0 0 20 20" fill="#fff">
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
                     </div>
                   )}
-                </div>
-                <p style={{ marginTop: "8px", fontSize: "13px", color: "#d1d5db", fontWeight: "500" }}>{theme.name}</p>
-                <p style={{ fontSize: "11px", color: "#6b7280" }}>{theme.desc}</p>
-                {formData.theme === theme.id && (
-                  <div style={{
-                    position: "absolute",
-                    top: "8px",
-                    right: "8px",
-                    width: "20px",
-                    height: "20px",
-                    backgroundColor: "#a855f7",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}>
-                    <svg width="12" height="12" viewBox="0 0 20 20" fill="#fff">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
 

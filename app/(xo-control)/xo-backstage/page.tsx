@@ -244,6 +244,9 @@ export default function AdminDashboard() {
                 </span>
               )}
             </Link>
+            <Link href="/xo-backstage/support" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>
+              Support
+            </Link>
             <Link href="/dashboard" style={{
               padding: "8px 16px",
               backgroundColor: "rgba(168, 85, 247, 0.2)",

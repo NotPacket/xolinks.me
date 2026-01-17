@@ -52,6 +52,22 @@ export default function ThemeBackground({ themeId }: ThemeBackgroundProps) {
       case "cherry":
         animationId = cherryAnimation(ctx, canvas);
         break;
+      // Pro-only animated themes
+      case "aurora":
+        animationId = auroraAnimation(ctx, canvas);
+        break;
+      case "matrix":
+        animationId = matrixAnimation(ctx, canvas);
+        break;
+      case "neon":
+        animationId = neonAnimation(ctx, canvas);
+        break;
+      case "galaxy":
+        animationId = galaxyAnimation(ctx, canvas);
+        break;
+      case "plasma":
+        animationId = plasmaAnimation(ctx, canvas);
+        break;
       default:
         animationId = spaceAnimation(ctx, canvas);
     }
@@ -71,6 +87,12 @@ export default function ThemeBackground({ themeId }: ThemeBackgroundProps) {
     noir: "#000000",
     lavender: "linear-gradient(to bottom, #4a0072, #7b2ff7, #2e1065)",
     cherry: "linear-gradient(to bottom, #870000, #190a05, #5c0000)",
+    // Pro-only themes
+    aurora: "linear-gradient(to bottom, #0c0a20, #1a0a2e, #0d1b2a)",
+    matrix: "#000000",
+    neon: "linear-gradient(to bottom, #0a0a1a, #1a0a2e, #0a1a2a)",
+    galaxy: "linear-gradient(to bottom, #0f0f23, #1a1a3e, #2d1b69)",
+    plasma: "linear-gradient(to bottom, #1a0a2e, #2e1065, #4c1d95)",
   };
 
   return (
@@ -613,6 +635,287 @@ function cherryAnimation(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElemen
       drawCherryPetal(p.x, p.y, p.size, p.rotation);
     });
 
+    return requestAnimationFrame(animate);
+  }
+
+  return animate();
+}
+
+// ============ PRO-ONLY ANIMATED THEMES ============
+
+// Aurora theme - Northern lights effect
+function auroraAnimation(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): number {
+  let time = 0;
+
+  function animate() {
+    time += 0.005;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw multiple aurora bands
+    for (let band = 0; band < 3; band++) {
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height * 0.3);
+
+      for (let x = 0; x <= canvas.width; x += 10) {
+        const y = canvas.height * 0.3 +
+          Math.sin(x * 0.005 + time + band * 2) * 80 +
+          Math.sin(x * 0.01 + time * 1.5 + band) * 40;
+        ctx.lineTo(x, y);
+      }
+
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      const hue1 = (time * 20 + band * 60) % 360;
+      const hue2 = (time * 20 + band * 60 + 60) % 360;
+      gradient.addColorStop(0, `hsla(${hue1}, 80%, 60%, 0)`);
+      gradient.addColorStop(0.3, `hsla(${hue1}, 80%, 60%, ${0.15 - band * 0.03})`);
+      gradient.addColorStop(0.6, `hsla(${hue2}, 70%, 50%, ${0.1 - band * 0.02})`);
+      gradient.addColorStop(1, `hsla(${hue2}, 70%, 50%, 0)`);
+
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+
+    // Add subtle stars
+    for (let i = 0; i < 50; i++) {
+      const x = (Math.sin(i * 127.1 + time * 0.1) * 0.5 + 0.5) * canvas.width;
+      const y = (Math.cos(i * 269.5) * 0.5 + 0.5) * canvas.height * 0.6;
+      const opacity = (Math.sin(time * 2 + i) + 1) * 0.3;
+
+      ctx.beginPath();
+      ctx.arc(x, y, 1, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+      ctx.fill();
+    }
+
+    return requestAnimationFrame(animate);
+  }
+
+  return animate();
+}
+
+// Matrix theme - Falling code rain
+function matrixAnimation(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): number {
+  const chars = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF";
+  const fontSize = 14;
+  const columns = Math.floor(canvas.width / fontSize);
+  const drops: number[] = [];
+
+  for (let i = 0; i < columns; i++) {
+    drops[i] = Math.random() * -100;
+  }
+
+  function animate() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#0f0";
+    ctx.font = `${fontSize}px monospace`;
+
+    for (let i = 0; i < drops.length; i++) {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const x = i * fontSize;
+      const y = drops[i] * fontSize;
+
+      // Brighter green at the leading edge
+      const gradient = ctx.createLinearGradient(x, y - fontSize * 10, x, y);
+      gradient.addColorStop(0, "rgba(0, 255, 0, 0)");
+      gradient.addColorStop(0.8, "rgba(0, 255, 0, 0.5)");
+      gradient.addColorStop(1, "rgba(200, 255, 200, 1)");
+      ctx.fillStyle = gradient;
+
+      ctx.fillText(char, x, y);
+
+      if (y > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i] += 0.5;
+    }
+
+    return requestAnimationFrame(animate);
+  }
+
+  return animate();
+}
+
+// Neon City theme - Neon lights and city glow
+function neonAnimation(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): number {
+  interface NeonLine {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    color: string;
+    glow: number;
+    glowSpeed: number;
+  }
+
+  const lines: NeonLine[] = [];
+  const colors = ["#ec4899", "#0ea5e9", "#a855f7", "#22d3ee"];
+
+  // Create random neon lines
+  for (let i = 0; i < 15; i++) {
+    const vertical = Math.random() > 0.5;
+    lines.push({
+      x1: Math.random() * canvas.width,
+      y1: Math.random() * canvas.height,
+      x2: vertical ? 0 : Math.random() * 200 + 50,
+      y2: vertical ? Math.random() * 200 + 50 : 0,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      glow: Math.random() * Math.PI * 2,
+      glowSpeed: Math.random() * 0.03 + 0.01,
+    });
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw neon lines
+    lines.forEach((line) => {
+      line.glow += line.glowSpeed;
+      const intensity = (Math.sin(line.glow) + 1) * 0.5;
+
+      ctx.beginPath();
+      ctx.moveTo(line.x1, line.y1);
+      ctx.lineTo(line.x1 + line.x2, line.y1 + line.y2);
+
+      ctx.strokeStyle = line.color;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = line.color;
+      ctx.shadowBlur = 20 + intensity * 20;
+      ctx.globalAlpha = 0.5 + intensity * 0.5;
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    });
+
+    // Add flickering particles
+    for (let i = 0; i < 20; i++) {
+      if (Math.random() > 0.7) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    return requestAnimationFrame(animate);
+  }
+
+  return animate();
+}
+
+// Galaxy theme - Swirling galaxies and stars
+function galaxyAnimation(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): number {
+  interface Star {
+    x: number;
+    y: number;
+    size: number;
+    angle: number;
+    distance: number;
+    speed: number;
+    color: string;
+  }
+
+  const stars: Star[] = [];
+  const colors = ["#ffffff", "#c084fc", "#ec4899", "#8b5cf6"];
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+
+  // Create spiral galaxy stars
+  for (let i = 0; i < 300; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * Math.min(canvas.width, canvas.height) * 0.4;
+    stars.push({
+      x: 0,
+      y: 0,
+      size: Math.random() * 2 + 0.5,
+      angle,
+      distance,
+      speed: 0.001 + (1 - distance / (Math.min(canvas.width, canvas.height) * 0.4)) * 0.002,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    });
+  }
+
+  function animate() {
+    ctx.fillStyle = "rgba(15, 15, 35, 0.1)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    stars.forEach((star) => {
+      star.angle += star.speed;
+
+      // Spiral effect
+      const spiralOffset = star.angle * 0.5;
+      star.x = centerX + Math.cos(star.angle + spiralOffset) * star.distance;
+      star.y = centerY + Math.sin(star.angle + spiralOffset) * star.distance;
+
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fillStyle = star.color;
+      ctx.fill();
+    });
+
+    // Central glow
+    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 100);
+    gradient.addColorStop(0, "rgba(147, 51, 234, 0.3)");
+    gradient.addColorStop(0.5, "rgba(147, 51, 234, 0.1)");
+    gradient.addColorStop(1, "rgba(147, 51, 234, 0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    return requestAnimationFrame(animate);
+  }
+
+  return animate();
+}
+
+// Plasma theme - Flowing plasma/liquid effect
+function plasmaAnimation(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): number {
+  let time = 0;
+
+  function animate() {
+    time += 0.01;
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    const data = imageData.data;
+
+    for (let x = 0; x < canvas.width; x += 4) {
+      for (let y = 0; y < canvas.height; y += 4) {
+        const value =
+          Math.sin(x * 0.01 + time) +
+          Math.sin(y * 0.01 + time * 0.5) +
+          Math.sin((x + y) * 0.01 + time * 0.3) +
+          Math.sin(Math.sqrt(x * x + y * y) * 0.01 + time * 0.7);
+
+        const normalizedValue = (value + 4) / 8; // Normalize to 0-1
+        const r = Math.floor(Math.sin(normalizedValue * Math.PI * 2) * 100 + 100);
+        const g = Math.floor(Math.sin(normalizedValue * Math.PI * 2 + 2) * 50 + 50);
+        const b = Math.floor(Math.sin(normalizedValue * Math.PI * 2 + 4) * 100 + 150);
+
+        // Fill 4x4 block for performance
+        for (let dx = 0; dx < 4 && x + dx < canvas.width; dx++) {
+          for (let dy = 0; dy < 4 && y + dy < canvas.height; dy++) {
+            const index = ((y + dy) * canvas.width + (x + dx)) * 4;
+            data[index] = r;
+            data[index + 1] = g;
+            data[index + 2] = b;
+            data[index + 3] = 40; // Low alpha for subtle effect
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
     return requestAnimationFrame(animate);
   }
 

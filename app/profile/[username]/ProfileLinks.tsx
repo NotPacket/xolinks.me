@@ -1,7 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Theme } from "@/lib/themes/config";
+
+interface LinkVariant {
+  id: string;
+  name: string;
+  title: string;
+  url: string;
+  weight: number;
+  isActive: boolean;
+}
 
 interface Link {
   id: string;
@@ -9,11 +18,32 @@ interface Link {
   url: string;
   platform: string | null;
   isVerified: boolean;
+  abTestEnabled?: boolean;
+  variants?: LinkVariant[];
 }
 
 interface ProfileLinksProps {
   links: Link[];
   theme: Theme;
+}
+
+// Select a variant based on weighted random selection
+function selectVariant(variants: LinkVariant[]): LinkVariant | null {
+  const activeVariants = variants.filter(v => v.isActive);
+  if (activeVariants.length === 0) return null;
+
+  const totalWeight = activeVariants.reduce((sum, v) => sum + v.weight, 0);
+  if (totalWeight === 0) {
+    // Equal distribution if no weights
+    return activeVariants[Math.floor(Math.random() * activeVariants.length)];
+  }
+
+  let random = Math.random() * totalWeight;
+  for (const variant of activeVariants) {
+    random -= variant.weight;
+    if (random <= 0) return variant;
+  }
+  return activeVariants[activeVariants.length - 1];
 }
 
 // Platform icons mapping
@@ -32,16 +62,34 @@ const platformIcons: Record<string, string> = {
 export default function ProfileLinks({ links, theme }: ProfileLinksProps) {
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
 
+  // Pre-select variants for A/B testing (memoized to stay consistent during render)
+  const selectedVariants = useMemo(() => {
+    const map: Record<string, LinkVariant | null> = {};
+    for (const link of links) {
+      if (link.abTestEnabled && link.variants && link.variants.length > 0) {
+        map[link.id] = selectVariant(link.variants);
+      }
+    }
+    return map;
+  }, [links]);
+
   const handleClick = async (e: React.MouseEvent, link: Link) => {
     e.preventDefault();
+
+    // Determine if we're using a variant
+    const variant = link.abTestEnabled ? selectedVariants[link.id] : null;
+    const targetUrl = variant ? variant.url : link.url;
 
     fetch("/api/track/click", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ linkId: link.id }),
+      body: JSON.stringify({
+        linkId: link.id,
+        variantId: variant?.id || null,
+      }),
     }).catch(() => {});
 
-    window.open(link.url, "_blank", "noopener,noreferrer");
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
   };
 
   if (links.length === 0) {
@@ -62,19 +110,28 @@ export default function ProfileLinks({ links, theme }: ProfileLinksProps) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+    <nav aria-label="Profile links" role="navigation">
+      <ul style={{ display: "flex", flexDirection: "column", gap: "10px", listStyle: "none", padding: 0, margin: 0 }}>
       {links.map((link, index) => {
         const isHovered = hoveredLink === link.id;
         const platformKey = link.platform?.toLowerCase() || "";
         const hasIcon = platformKey in platformIcons;
 
+        // Use variant title if A/B testing is enabled
+        const variant = link.abTestEnabled ? selectedVariants[link.id] : null;
+        const displayTitle = variant ? variant.title : link.title;
+
         return (
+          <li key={link.id}>
           <a
-            key={link.id}
             href={link.url}
             onClick={(e) => handleClick(e, link)}
             onMouseEnter={() => setHoveredLink(link.id)}
             onMouseLeave={() => setHoveredLink(null)}
+            onFocus={() => setHoveredLink(link.id)}
+            onBlur={() => setHoveredLink(null)}
+            aria-label={`${displayTitle}${link.isVerified ? ' (verified)' : ''}${link.platform ? ` - ${link.platform}` : ''}`}
+            rel="noopener noreferrer"
             style={{
               display: "flex",
               alignItems: "center",
@@ -100,13 +157,13 @@ export default function ProfileLinks({ links, theme }: ProfileLinksProps) {
             }}
           >
             {hasIcon && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.9 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ opacity: 0.9 }}>
                 <path d={platformIcons[platformKey]} />
               </svg>
             )}
-            <span>{link.title}</span>
+            <span>{displayTitle}</span>
             {link.isVerified && (
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="#4ade80" style={{ marginLeft: "auto" }}>
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="#4ade80" aria-hidden="true" style={{ marginLeft: "auto" }}>
                 <path
                   fillRule="evenodd"
                   d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -115,8 +172,10 @@ export default function ProfileLinks({ links, theme }: ProfileLinksProps) {
               </svg>
             )}
           </a>
+          </li>
         );
       })}
+      </ul>
 
       <style>{`
         @keyframes link-appear {
@@ -130,6 +189,6 @@ export default function ProfileLinks({ links, theme }: ProfileLinksProps) {
           }
         }
       `}</style>
-    </div>
+    </nav>
   );
 }

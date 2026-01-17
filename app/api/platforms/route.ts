@@ -32,6 +32,13 @@ export async function GET() {
       platformColor: PLATFORMS[conn.platform]?.color || "#666666",
     }));
 
+    // Get user subscription tier for Pro-only platforms
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { subscriptionTier: true },
+    });
+    const isPro = user?.subscriptionTier === "pro" || user?.subscriptionTier === "business";
+
     // List available platforms (not yet connected)
     const connectedPlatforms = new Set(connections.map((c: typeof connections[number]) => c.platform));
     const availablePlatforms = Object.entries(PLATFORMS)
@@ -41,11 +48,13 @@ export async function GET() {
         name: config.name,
         color: config.color,
         oauthSupported: config.oauthSupported,
+        proOnly: config.proOnly || false,
       }));
 
     return NextResponse.json({
       connections: connectionsWithMeta,
       availablePlatforms,
+      isPro,
     });
   } catch (error) {
     console.error("Get platforms error:", error);

@@ -5,7 +5,7 @@ import prisma from "@/lib/db";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { linkId } = body;
+    const { linkId, variantId } = body;
 
     if (!linkId) {
       return NextResponse.json({ error: "Link ID required" }, { status: 400 });
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       data: {
         linkId: link.id,
         userId: link.userId,
+        variantId: variantId || null,
         ipAddress: ip.substring(0, 45),
         userAgent: userAgent.substring(0, 500),
         referrer: referer.substring(0, 500),
@@ -45,6 +46,14 @@ export async function POST(request: NextRequest) {
         os,
       },
     });
+
+    // Update variant click count if variant was specified
+    if (variantId) {
+      await prisma.linkVariant.update({
+        where: { id: variantId },
+        data: { clicks: { increment: 1 } },
+      }).catch(() => {}); // Silently fail if variant doesn't exist
+    }
 
     // Update daily stats
     const today = new Date();

@@ -9,6 +9,7 @@ export interface PlatformConfig {
   oauthSupported: boolean;
   oauthUrl?: string;
   scopes?: string[];
+  proOnly?: boolean; // Requires Pro subscription to use
 }
 
 export const PLATFORMS: Record<string, PlatformConfig> = {
@@ -110,6 +111,26 @@ export const PLATFORMS: Record<string, PlatformConfig> = {
     oauthSupported: true,
     oauthUrl: "https://www.linkedin.com/oauth/v2/authorization",
     scopes: ["r_liteprofile"],
+  },
+  onlyfans: {
+    id: "onlyfans",
+    name: "OnlyFans",
+    icon: "onlyfans",
+    color: "#00AFF0",
+    urlPattern: "^https?://(www\\.)?onlyfans\\.com/[a-zA-Z0-9_]+/?$",
+    profileUrlTemplate: "https://onlyfans.com/{username}",
+    oauthSupported: false,
+    proOnly: true,
+  },
+  fansly: {
+    id: "fansly",
+    name: "Fansly",
+    icon: "fansly",
+    color: "#1FA2F1",
+    urlPattern: "^https?://(www\\.)?fansly\\.com/[a-zA-Z0-9_]+/?$",
+    profileUrlTemplate: "https://fansly.com/{username}",
+    oauthSupported: false,
+    proOnly: true,
   },
 };
 

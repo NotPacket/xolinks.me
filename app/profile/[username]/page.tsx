@@ -5,8 +5,11 @@ import Link from "next/link";
 import ProfileLinks from "./ProfileLinks";
 import ReportModal from "./ReportModal";
 import AchievementBadges from "@/components/AchievementBadges";
+import ContactForm from "@/components/ContactForm";
 import { getTheme, createCustomTheme } from "@/lib/themes/config";
 import ThemeBackground from "@/components/ThemeBackground";
+import { getFontFamily, getGoogleFontsUrl } from "@/lib/fonts/config";
+import TrackingScripts from "@/components/TrackingScripts";
 
 interface ProfilePageProps {
   params: Promise<{ username: string }>;
@@ -25,7 +28,13 @@ async function getProfile(username: string) {
       avatarUrl: true,
       theme: true,
       donationUrl: true,
+      profileFont: true,
+      headingFont: true,
+      subscriptionTier: true,
       totalProfileViews: true,
+      facebookPixelId: true,
+      googleAnalyticsId: true,
+      tiktokPixelId: true,
       links: {
         where: { isActive: true },
         orderBy: { displayOrder: "asc" },
@@ -36,9 +45,22 @@ async function getProfile(username: string) {
           platform: true,
           icon: true,
           isVerified: true,
+          abTestEnabled: true,
+          variants: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              title: true,
+              url: true,
+              weight: true,
+              isActive: true,
+            },
+          },
         },
       },
       achievements: {
+        where: { displayOnProfile: true },
         include: {
           achievement: true,
         },
@@ -123,27 +145,56 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     ? createCustomTheme(activeCustomTheme)
     : getTheme(profile.theme);
 
+  // Get custom fonts for Pro users
+  const isPro = profile.subscriptionTier === "pro" || profile.subscriptionTier === "business";
+  const profileFontFamily = isPro ? getFontFamily(profile.profileFont) : "inherit";
+  const headingFontFamily = isPro ? getFontFamily(profile.headingFont) : "inherit";
+  const googleFontsUrl = isPro ? getGoogleFontsUrl([profile.profileFont, profile.headingFont]) : null;
+
   return (
     <div style={{
       minHeight: "100vh",
       position: "relative",
       overflow: "hidden",
-      background: theme.background
+      background: theme.background,
+      fontFamily: profileFontFamily,
     }}>
+      {/* Skip Link for accessibility */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+
+      {/* Tracking Scripts for Pro users */}
+      <TrackingScripts
+        facebookPixelId={profile.facebookPixelId}
+        googleAnalyticsId={profile.googleAnalyticsId}
+        tiktokPixelId={profile.tiktokPixelId}
+      />
+
+      {/* Google Fonts for Pro users */}
+      {googleFontsUrl && (
+        <link rel="stylesheet" href={googleFontsUrl} />
+      )}
+
       {/* Animated Theme Background */}
       <ThemeBackground themeId={profile.theme} />
 
       {/* Main Content */}
-      <div style={{
-        position: "relative",
-        zIndex: 10,
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 20px"
-      }}>
+      <main
+        id="main-content"
+        role="main"
+        aria-label={`${profile.displayName || profile.username}'s profile`}
+        style={{
+          position: "relative",
+          zIndex: 10,
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "40px 20px"
+        }}
+      >
         {/* Profile Card */}
         <div style={{
           width: "100%",
@@ -199,7 +250,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               fontWeight: "700",
               color: theme.textPrimary,
               marginBottom: "8px",
-              letterSpacing: "-0.5px"
+              letterSpacing: "-0.5px",
+              fontFamily: headingFontFamily,
             }}>
               {profile.displayName || profile.username}
             </h1>
@@ -267,31 +319,37 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                 href={profile.donationUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="donation-button"
+                className="support-button"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "10px",
+                  gap: "8px",
                   width: "100%",
-                  padding: "14px 20px",
-                  background: `linear-gradient(135deg, #f59e0b, #ef4444)`,
+                  padding: "12px 20px",
+                  background: "rgba(255, 255, 255, 0.08)",
+                  backdropFilter: "blur(10px)",
                   borderRadius: "12px",
-                  color: "#fff",
-                  fontSize: "15px",
-                  fontWeight: "600",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  color: "rgba(255, 255, 255, 0.9)",
+                  fontSize: "14px",
+                  fontWeight: "500",
                   textDecoration: "none",
-                  boxShadow: "0 4px 15px rgba(245, 158, 11, 0.3)",
-                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                  transition: "all 0.3s ease",
                 }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
-                Support Me
+                Support
               </a>
             </div>
           )}
+
+          {/* Contact Form - Temporarily Disabled */}
+          {/* <div style={{ marginBottom: "20px" }}>
+            <ContactForm username={profile.username} displayName={profile.displayName} />
+          </div> */}
 
           {/* Report Button */}
           <div style={{ display: "flex", justifyContent: "center" }}>
@@ -302,6 +360,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         {/* Footer Branding */}
         <Link
           href="/"
+          aria-label="Create your own xolinks.me profile"
           style={{
             marginTop: "32px",
             display: "flex",
@@ -319,13 +378,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             transition: "all 0.3s ease"
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
           </svg>
           Create your xolinks.me
         </Link>
-      </div>
+      </main>
 
       {/* CSS Animations */}
       <style>{`
