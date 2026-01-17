@@ -398,6 +398,68 @@ export default function DashboardContent() {
           </div>
         )}
 
+        {/* Upgrade to Pro Banner */}
+        {!isPro && (
+          <Link
+            href="/upgrade"
+            style={{
+              display: "block",
+              padding: "20px 24px",
+              borderRadius: "16px",
+              marginBottom: "24px",
+              background: "linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(59, 130, 246, 0.2))",
+              border: "1px solid rgba(168, 85, 247, 0.4)",
+              textDecoration: "none",
+              transition: "all 0.3s ease"
+            }}
+          >
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              flexWrap: "wrap"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                <div style={{
+                  width: "48px",
+                  height: "48px",
+                  background: "linear-gradient(135deg, #a855f7, #3b82f6)",
+                  borderRadius: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ color: "#fff", fontWeight: "700", fontSize: "17px", marginBottom: "4px" }}>
+                    Upgrade to Pro
+                  </p>
+                  <p style={{ color: "#d1d5db", fontSize: "14px" }}>
+                    Unlimited links, A/B testing, custom fonts, and advanced analytics for just $8/month
+                  </p>
+                </div>
+              </div>
+              <div style={{
+                padding: "10px 20px",
+                background: "linear-gradient(135deg, #a855f7, #3b82f6)",
+                borderRadius: "10px",
+                color: "#fff",
+                fontWeight: "600",
+                fontSize: "14px",
+                whiteSpace: "nowrap",
+                boxShadow: "0 4px 15px rgba(139, 92, 246, 0.4)"
+              }}>
+                Upgrade Now
+              </div>
+            </div>
+          </Link>
+        )}
+
         {/* User Info */}
         <div style={cardStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>

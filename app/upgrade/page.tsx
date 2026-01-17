@@ -392,7 +392,7 @@ function UpgradePageContent() {
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "48px", fontWeight: "800" }}>$5</span>
+                <span style={{ fontSize: "48px", fontWeight: "800" }}>$8</span>
                 <span style={{ color: "#9ca3af" }}>/month</span>
               </div>
             </div>
