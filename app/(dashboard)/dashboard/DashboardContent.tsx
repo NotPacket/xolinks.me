@@ -88,7 +88,6 @@ export default function DashboardContent() {
   const [newLink, setNewLink] = useState({ title: "", url: "", platform: "" });
   const [addingLink, setAddingLink] = useState(false);
   const [abTestLink, setAbTestLink] = useState<LinkData | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const fetchLinks = useCallback(async () => {
     const res = await fetch("/api/user/links");
@@ -293,174 +292,15 @@ export default function DashboardContent() {
           alignItems: "center"
         }}>
           <h1 style={{ fontSize: "20px", fontWeight: "bold" }}>xolinks.me</h1>
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
             {user?.role === "admin" && (
-              <Link
-                href="/xo-backstage"
-                style={{
-                  padding: "8px 14px",
-                  backgroundColor: "rgba(239, 68, 68, 0.15)",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                  borderRadius: "8px",
-                  color: "#f87171",
-                  textDecoration: "none",
-                  fontSize: "13px",
-                  fontWeight: "500"
-                }}
-              >
-                Admin
-              </Link>
+              <Link href="/xo-backstage" style={{ color: "#f87171", textDecoration: "none", fontSize: "14px" }}>Admin</Link>
             )}
-            <Link
-              href={`/@${user?.username}`}
-              target="_blank"
-              style={{
-                padding: "8px 16px",
-                background: "linear-gradient(135deg, #a855f7, #3b82f6)",
-                borderRadius: "8px",
-                color: "#fff",
-                textDecoration: "none",
-                fontSize: "13px",
-                fontWeight: "500"
-              }}
-            >
-              View Profile
-            </Link>
-
-            {/* Menu Dropdown */}
-            <div style={{ position: "relative" }}>
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                style={{
-                  padding: "8px 12px",
-                  backgroundColor: "rgba(55, 65, 81, 0.5)",
-                  border: "1px solid #374151",
-                  borderRadius: "8px",
-                  color: "#d1d5db",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "13px",
-                  fontWeight: "500"
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-                Menu
-              </button>
-
-              {menuOpen && (
-                <>
-                  <div
-                    onClick={() => setMenuOpen(false)}
-                    style={{
-                      position: "fixed",
-                      inset: 0,
-                      zIndex: 40
-                    }}
-                  />
-                  <div style={{
-                    position: "absolute",
-                    top: "calc(100% + 8px)",
-                    right: 0,
-                    width: "180px",
-                    backgroundColor: "#1f2937",
-                    border: "1px solid #374151",
-                    borderRadius: "12px",
-                    padding: "8px",
-                    boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
-                    zIndex: 50
-                  }}>
-                    <Link
-                      href="/analytics"
-                      onClick={() => setMenuOpen(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        padding: "10px 12px",
-                        color: "#d1d5db",
-                        textDecoration: "none",
-                        fontSize: "14px",
-                        borderRadius: "8px"
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 20V10M12 20V4M6 20v-6" />
-                      </svg>
-                      Analytics
-                    </Link>
-                    <Link
-                      href="/settings"
-                      onClick={() => setMenuOpen(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        padding: "10px 12px",
-                        color: "#d1d5db",
-                        textDecoration: "none",
-                        fontSize: "14px",
-                        borderRadius: "8px"
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="3" />
-                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                      </svg>
-                      Settings
-                    </Link>
-                    <Link
-                      href="/support"
-                      onClick={() => setMenuOpen(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        padding: "10px 12px",
-                        color: "#d1d5db",
-                        textDecoration: "none",
-                        fontSize: "14px",
-                        borderRadius: "8px"
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" />
-                      </svg>
-                      Support
-                    </Link>
-                    <div style={{ height: "1px", backgroundColor: "#374151", margin: "8px 0" }} />
-                    <button
-                      onClick={() => { setMenuOpen(false); handleLogout(); }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        padding: "10px 12px",
-                        color: "#f87171",
-                        background: "none",
-                        border: "none",
-                        fontSize: "14px",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        width: "100%",
-                        textAlign: "left"
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
-                      </svg>
-                      Logout
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <Link href="/settings" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Settings</Link>
+            <Link href="/analytics" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Analytics</Link>
+            <Link href="/support" style={{ color: "#9ca3af", textDecoration: "none", fontSize: "14px" }}>Support</Link>
+            <Link href={`/@${user?.username}`} target="_blank" style={{ color: "#a855f7", textDecoration: "none", fontSize: "14px" }}>View Profile</Link>
+            <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "14px" }}>Logout</button>
           </div>
         </div>
       </header>
