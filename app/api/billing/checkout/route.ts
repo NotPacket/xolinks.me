@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the price ID for requested tier
-    const tierConfig = SUBSCRIPTION_TIERS[requestedTier as keyof typeof SUBSCRIPTION_TIERS];
+    const tierConfig = SUBSCRIPTION_TIERS[requestedTier as keyof typeof SUBSCRIPTION_TIERS] as { priceId?: string };
     const priceId = tierConfig.priceId;
 
     if (!priceId) {
