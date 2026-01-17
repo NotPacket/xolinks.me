@@ -493,6 +493,7 @@ export default function DashboardContent() {
           <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px" }}>Connect Your Accounts</h3>
           <p style={{ color: "#9ca3af", fontSize: "14px", marginBottom: "20px" }}>
             Connect your social accounts to add verified links. Only you can add links to accounts you own.
+            <br>TikTok and Instagram API will be coming soon</br>
           </p>
 
           <div style={{
