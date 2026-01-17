@@ -314,7 +314,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
           {/* Donation Button */}
           {profile.donationUrl && (
-            <div style={{ marginBottom: "20px" }}>
+            <div style={{ marginTop: "20px", marginBottom: "20px" }}>
               <a
                 href={profile.donationUrl}
                 target="_blank"
