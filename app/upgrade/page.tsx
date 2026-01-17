@@ -25,6 +25,17 @@ const FEATURES = {
     { name: "Priority support", included: true },
     { name: "Custom domain (coming soon)", included: true },
   ],
+  business: [
+    { name: "Unlimited links", included: true },
+    { name: "Advanced analytics (90 days)", included: true },
+    { name: "All premium themes", included: true },
+    { name: "Unlimited custom themes", included: true },
+    { name: "Remove xolinks.me branding", included: true },
+    { name: "Custom domain support", included: true },
+    { name: "Dedicated support", included: true },
+    { name: "API access", included: true },
+    { name: "Team collaboration (5 members)", included: true },
+  ],
 };
 
 // Wrapper component for default export with Suspense
@@ -87,13 +98,15 @@ function UpgradePageContent() {
     }
   }, [searchParams]);
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (tier: "pro" | "business" = "pro") => {
     setLoading(true);
     setMessage(null);
 
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier }),
       });
 
       const data = await res.json();
@@ -236,7 +249,7 @@ function UpgradePageContent() {
               WebkitTextFillColor: "transparent",
             }}
           >
-            Upgrade to Pro
+            Choose Your Plan
           </h1>
           <p style={{ color: "#9ca3af", fontSize: "18px", maxWidth: "500px", margin: "0 auto" }}>
             Unlock unlimited links, advanced analytics, and more powerful features
@@ -392,7 +405,7 @@ function UpgradePageContent() {
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "48px", fontWeight: "800" }}>$8</span>
+                <span style={{ fontSize: "48px", fontWeight: "800" }}>$5</span>
                 <span style={{ color: "#9ca3af" }}>/month</span>
               </div>
             </div>
@@ -417,7 +430,129 @@ function UpgradePageContent() {
               ))}
             </ul>
 
-            {currentTier === "pro" ? (
+            {currentTier === "pro" || currentTier === "business" ? (
+              <button
+                onClick={handleManageBilling}
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  backgroundColor: "rgba(55, 65, 81, 0.5)",
+                  border: "1px solid #374151",
+                  borderRadius: "12px",
+                  color: "#d1d5db",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.7 : 1,
+                }}
+              >
+                {loading ? "Loading..." : currentTier === "pro" ? "Current Plan" : "Manage Subscription"}
+              </button>
+            ) : (
+              <button
+                onClick={() => handleUpgrade("pro")}
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  background: "linear-gradient(135deg, #a855f7, #3b82f6)",
+                  border: "none",
+                  borderRadius: "12px",
+                  color: "#fff",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.7 : 1,
+                  boxShadow: "0 4px 15px rgba(139, 92, 246, 0.4)",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {loading ? "Loading..." : "Upgrade to Pro"}
+              </button>
+            )}
+          </div>
+
+          {/* Business Tier */}
+          <div
+            style={{
+              backgroundColor: "rgba(251, 191, 36, 0.1)",
+              border: currentTier === "business" ? "2px solid #fbbf24" : "2px solid rgba(251, 191, 36, 0.5)",
+              borderRadius: "20px",
+              padding: "32px",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {/* Best Value Badge */}
+            <div
+              style={{
+                position: "absolute",
+                top: "20px",
+                right: "-30px",
+                backgroundColor: "#fbbf24",
+                color: "#000",
+                padding: "4px 40px",
+                fontSize: "12px",
+                fontWeight: "600",
+                transform: "rotate(45deg)",
+              }}
+            >
+              BEST VALUE
+            </div>
+
+            <div style={{ marginBottom: "24px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "8px",
+                }}
+              >
+                <h2 style={{ fontSize: "24px", fontWeight: "700" }}>Business</h2>
+                {currentTier === "business" && (
+                  <span
+                    style={{
+                      padding: "4px 12px",
+                      backgroundColor: "rgba(34, 197, 94, 0.2)",
+                      color: "#4ade80",
+                      fontSize: "12px",
+                      borderRadius: "20px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Active
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                <span style={{ fontSize: "48px", fontWeight: "800" }}>$15</span>
+                <span style={{ color: "#9ca3af" }}>/month</span>
+              </div>
+            </div>
+
+            <ul style={{ listStyle: "none", padding: 0, marginBottom: "24px" }}>
+              {FEATURES.business.map((feature, idx) => (
+                <li
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "10px 0",
+                    borderBottom: "1px solid rgba(251, 191, 36, 0.3)",
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#fbbf24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                  </svg>
+                  <span style={{ color: "#d1d5db" }}>{feature.name}</span>
+                </li>
+              ))}
+            </ul>
+
+            {currentTier === "business" ? (
               <button
                 onClick={handleManageBilling}
                 disabled={loading}
@@ -438,24 +573,24 @@ function UpgradePageContent() {
               </button>
             ) : (
               <button
-                onClick={handleUpgrade}
+                onClick={() => handleUpgrade("business")}
                 disabled={loading}
                 style={{
                   width: "100%",
                   padding: "14px",
-                  background: "linear-gradient(135deg, #a855f7, #3b82f6)",
+                  background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
                   border: "none",
                   borderRadius: "12px",
-                  color: "#fff",
+                  color: "#000",
                   fontSize: "16px",
                   fontWeight: "600",
                   cursor: loading ? "not-allowed" : "pointer",
                   opacity: loading ? 0.7 : 1,
-                  boxShadow: "0 4px 15px rgba(139, 92, 246, 0.4)",
+                  boxShadow: "0 4px 15px rgba(251, 191, 36, 0.4)",
                   transition: "all 0.2s ease",
                 }}
               >
-                {loading ? "Loading..." : "Upgrade to Pro"}
+                {loading ? "Loading..." : "Upgrade to Business"}
               </button>
             )}
           </div>

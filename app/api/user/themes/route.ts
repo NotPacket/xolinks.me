@@ -57,12 +57,18 @@ export async function POST(request: NextRequest) {
       select: { subscriptionTier: true },
     });
 
-    const maxThemes = user?.subscriptionTier === "pro" ? 50 : 5;
+    // Business tier has unlimited themes (-1)
+    const maxThemes = user?.subscriptionTier === "business" ? -1 : user?.subscriptionTier === "pro" ? 50 : 5;
 
-    if (existingThemes >= maxThemes) {
+    if (maxThemes !== -1 && existingThemes >= maxThemes) {
+      const upgradeMessage = user?.subscriptionTier === "free"
+        ? "Upgrade to Pro for more!"
+        : user?.subscriptionTier === "pro"
+          ? "Upgrade to Business for unlimited themes!"
+          : "";
       return NextResponse.json(
         {
-          error: `Maximum ${maxThemes} custom themes allowed. ${user?.subscriptionTier !== "pro" ? "Upgrade to Pro for more!" : ""}`,
+          error: `Maximum ${maxThemes} custom themes allowed. ${upgradeMessage}`,
         },
         { status: 400 }
       );

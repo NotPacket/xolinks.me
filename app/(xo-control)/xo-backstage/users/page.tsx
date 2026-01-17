@@ -68,6 +68,7 @@ export default function AdminUsersPage() {
     email: "",
     username: "",
     role: "",
+    subscriptionTier: "",
     newPassword: "",
     emailVerified: false,
   });
@@ -145,6 +146,7 @@ export default function AdminUsersPage() {
       email: user.email,
       username: user.username,
       role: user.role,
+      subscriptionTier: user.subscriptionTier,
       newPassword: "",
       emailVerified: user.emailVerified ?? false,
     });
@@ -172,6 +174,9 @@ export default function AdminUsersPage() {
       }
       if (editForm.role !== editingUser.role) {
         updates.role = editForm.role;
+      }
+      if (editForm.subscriptionTier !== editingUser.subscriptionTier) {
+        updates.subscriptionTier = editForm.subscriptionTier;
       }
       if (editForm.emailVerified !== (editingUser.emailVerified ?? false)) {
         updates.emailVerified = editForm.emailVerified;
@@ -713,6 +718,22 @@ export default function AdminUsersPage() {
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
                   <option value="suspended">Suspended</option>
+                </select>
+              </div>
+
+              {/* Subscription Tier */}
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", marginBottom: "8px", color: "#d1d5db", fontSize: "14px", fontWeight: "500" }}>
+                  Subscription Tier
+                </label>
+                <select
+                  value={editForm.subscriptionTier}
+                  onChange={(e) => setEditForm({ ...editForm, subscriptionTier: e.target.value })}
+                  style={inputStyle}
+                >
+                  <option value="free">Free</option>
+                  <option value="pro">Pro</option>
+                  <option value="business">Business</option>
                 </select>
               </div>
 

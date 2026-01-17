@@ -74,6 +74,31 @@ export const SUBSCRIPTION_TIERS = {
       removeBranding: true,
     },
   },
+  business: {
+    name: "Business",
+    price: 15,
+    priceId: process.env.STRIPE_BUSINESS_PRICE_ID,
+    features: [
+      "Unlimited links",
+      "Advanced analytics (90 days)",
+      "All premium themes",
+      "Unlimited custom themes",
+      "Remove xolinks.me branding",
+      "Custom domain support",
+      "Dedicated support",
+      "API access",
+      "Team collaboration (up to 5 members)",
+    ],
+    limits: {
+      maxLinks: -1, // unlimited
+      maxCustomThemes: -1, // unlimited
+      analytics: "90days",
+      removeBranding: true,
+      customDomain: true,
+      apiAccess: true,
+      teamMembers: 5,
+    },
+  },
 };
 
 export type SubscriptionTier = keyof typeof SUBSCRIPTION_TIERS;
@@ -87,7 +112,7 @@ export function getTierLimits(tier: string) {
 // Check if user has access to a feature
 export function hasFeatureAccess(
   userTier: string,
-  feature: "unlimitedLinks" | "advancedAnalytics" | "removeBranding" | "customDomain"
+  feature: "unlimitedLinks" | "advancedAnalytics" | "removeBranding" | "customDomain" | "apiAccess" | "teamCollaboration"
 ): boolean {
   const tier = userTier as SubscriptionTier;
   const limits = SUBSCRIPTION_TIERS[tier]?.limits || SUBSCRIPTION_TIERS.free.limits;
@@ -96,11 +121,15 @@ export function hasFeatureAccess(
     case "unlimitedLinks":
       return limits.maxLinks === -1;
     case "advancedAnalytics":
-      return limits.analytics === "30days";
+      return limits.analytics === "30days" || limits.analytics === "90days";
     case "removeBranding":
       return limits.removeBranding;
     case "customDomain":
-      return tier === "pro";
+      return tier === "pro" || tier === "business";
+    case "apiAccess":
+      return tier === "business";
+    case "teamCollaboration":
+      return tier === "business";
     default:
       return false;
   }

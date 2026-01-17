@@ -113,7 +113,22 @@ async function updateUserSubscription(
   userId: string,
   subscription: Stripe.Subscription
 ) {
-  const tier = subscription.status === "active" ? "pro" : "free";
+  // Determine tier from metadata or price ID
+  let tier = "free";
+  if (subscription.status === "active" || subscription.status === "trialing") {
+    // Check metadata first
+    if (subscription.metadata?.tier) {
+      tier = subscription.metadata.tier;
+    } else {
+      // Fall back to checking price ID
+      const priceId = subscription.items.data[0]?.price.id;
+      if (priceId === process.env.STRIPE_BUSINESS_PRICE_ID) {
+        tier = "business";
+      } else if (priceId === process.env.STRIPE_PRO_PRICE_ID) {
+        tier = "pro";
+      }
+    }
+  }
   const status = subscription.status;
 
   // Update user's subscription tier

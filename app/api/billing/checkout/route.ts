@@ -1,13 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { stripe, SUBSCRIPTION_TIERS } from "@/lib/stripe";
 import { getSession } from "@/lib/auth/session";
 import prisma from "@/lib/db";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const requestedTier = body.tier || "pro";
+
+    // Validate tier
+    if (!["pro", "business"].includes(requestedTier)) {
+      return NextResponse.json(
+        { error: "Invalid subscription tier" },
+        { status: 400 }
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -24,10 +35,14 @@ export async function POST() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check if already Pro
-    if (user.subscriptionTier === "pro") {
+    // Check if already on requested tier or higher
+    const tierHierarchy = ["free", "pro", "business"];
+    const currentTierIndex = tierHierarchy.indexOf(user.subscriptionTier);
+    const requestedTierIndex = tierHierarchy.indexOf(requestedTier);
+
+    if (currentTierIndex >= requestedTierIndex) {
       return NextResponse.json(
-        { error: "You are already a Pro subscriber" },
+        { error: `You are already on ${user.subscriptionTier} tier or higher` },
         { status: 400 }
       );
     }
@@ -51,10 +66,12 @@ export async function POST() {
       });
     }
 
-    // Get the Pro price ID
-    const proPriceId = SUBSCRIPTION_TIERS.pro.priceId;
-    if (!proPriceId) {
-      console.error("STRIPE_PRO_PRICE_ID not configured");
+    // Get the price ID for requested tier
+    const tierConfig = SUBSCRIPTION_TIERS[requestedTier as keyof typeof SUBSCRIPTION_TIERS];
+    const priceId = tierConfig.priceId;
+
+    if (!priceId) {
+      console.error(`STRIPE_${requestedTier.toUpperCase()}_PRICE_ID not configured`);
       return NextResponse.json(
         { error: "Subscription configuration error" },
         { status: 500 }
@@ -67,7 +84,7 @@ export async function POST() {
       payment_method_types: ["card"],
       line_items: [
         {
-          price: proPriceId,
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -76,10 +93,12 @@ export async function POST() {
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/upgrade?canceled=true`,
       metadata: {
         userId: user.id,
+        tier: requestedTier,
       },
       subscription_data: {
         metadata: {
           userId: user.id,
+          tier: requestedTier,
         },
       },
     });
